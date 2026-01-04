@@ -1,0 +1,4 @@
+ASSIGNMENT.md
+data/*.npy
+
+!**/.gitkeep
