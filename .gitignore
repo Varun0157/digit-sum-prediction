@@ -1,5 +1,9 @@
 ASSIGNMENT.md
 data/*.npy
 data/processed
+checkpoints/*
+
+**/__pycache__
+wandb
 
 !**/.gitkeep

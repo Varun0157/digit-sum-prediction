@@ -1,5 +1,5 @@
 from src.model import SimpleCNN
-from train import run_model
+from src.train import run_model
 
 
 def get_default_config() -> dict:

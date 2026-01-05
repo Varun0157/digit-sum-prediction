@@ -43,7 +43,9 @@ class DigitSumDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
 
         num_classes = int(self.labels.max()) + 1
         weight_tensor = torch.zeros(num_classes, dtype=torch.float32)
-        weight_tensor[unique_classes] = torch.from_numpy(weights).float()
+
+        unique_classes_long = torch.from_numpy(unique_classes.astype(np.int64))
+        weight_tensor[unique_classes_long] = torch.from_numpy(weights).float()
         return weight_tensor
 
 
