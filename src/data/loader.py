@@ -34,7 +34,7 @@ class DigitSumDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
         return sample_tensor, label_tensor
 
     def get_class_weights(
-        self, weight_range: tuple[float, float] | None = (1.0, 10.0)
+        self, weight_range: tuple[float, float] | None = (1.0, 5.0)
     ) -> torch.Tensor:
         unique_classes = np.unique(self.labels)
         weights = compute_class_weight(

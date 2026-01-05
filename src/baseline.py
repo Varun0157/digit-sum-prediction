@@ -48,11 +48,6 @@ def sanity() -> None:
     model = SimpleCNN(num_classes=num_classes, kernel_size=config["kernel_size"])
     model_name = "SimpleCNN_sanity_check"
 
-    print("\n" + "=" * 60)
-    print("SANITY CHECK: Training with train set as validation")
-    print("Model should overfit and achieve near-perfect accuracy")
-    print("=" * 60 + "\n")
-
     run_model(model, model_name, config, train_loader, train_loader, train_weights)
 
 
