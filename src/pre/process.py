@@ -3,6 +3,7 @@ from pathlib import Path
 
 import numpy as np
 from numpy.typing import NDArray
+from sklearn.model_selection import train_test_split
 
 
 def load_raw_data(data_dir: Path) -> tuple[NDArray[np.uint8], NDArray[np.uint8]]:
@@ -29,6 +30,7 @@ def split_data(
     labels: NDArray[np.uint8],
     val_ratio: float,
     no_val: bool,
+    random_state: int,
 ) -> tuple[
     NDArray[np.uint8],
     NDArray[np.uint8],
@@ -39,20 +41,15 @@ def split_data(
         print("No validation set - all data in train")
         return samples, labels, None, None
 
-    n_samples = len(samples)
-    n_val = int(n_samples * val_ratio)
-    n_train = n_samples - n_val
+    train_samples, val_samples, train_labels, val_labels = train_test_split(
+        samples,
+        labels,
+        test_size=val_ratio,
+        stratify=labels,
+        random_state=random_state,
+    )
 
-    indices = np.random.permutation(n_samples)
-    train_indices = indices[:n_train]
-    val_indices = indices[n_train:]
-
-    train_samples = samples[train_indices]
-    train_labels = labels[train_indices]
-    val_samples = samples[val_indices]
-    val_labels = labels[val_indices]
-
-    print(f"Split: {n_train} train, {n_val} val (ratio={val_ratio:.2f})")
+    print(f"Stratified split: {len(train_samples)} train, {len(val_samples)} val (ratio={val_ratio:.2f})")
     return train_samples, train_labels, val_samples, val_labels
 
 
@@ -120,7 +117,7 @@ def main() -> None:
 
     samples, labels = load_raw_data(data_dir)
     train_samples, train_labels, val_samples, val_labels = split_data(
-        samples, labels, args.val_rat, args.no_val
+        samples, labels, args.val_rat, args.no_val, args.seed
     )
     save_data(output_dir, train_samples, train_labels, val_samples, val_labels)
 

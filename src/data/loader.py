@@ -3,6 +3,7 @@ from typing import Any
 
 import numpy as np
 import torch
+from sklearn.utils.class_weight import compute_class_weight
 from torch.utils.data import DataLoader, Dataset
 
 
@@ -32,6 +33,19 @@ class DigitSumDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
 
         return sample_tensor, label_tensor
 
+    def get_class_weights(self) -> torch.Tensor:
+        unique_classes = np.unique(self.labels)
+        weights = compute_class_weight(
+            class_weight="balanced",
+            classes=unique_classes,
+            y=self.labels,
+        )
+
+        num_classes = int(self.labels.max()) + 1
+        weight_tensor = torch.zeros(num_classes, dtype=torch.float32)
+        weight_tensor[unique_classes] = torch.from_numpy(weights).float()
+        return weight_tensor
+
 
 def get_dataloader(
     data_dir: str,
@@ -39,12 +53,14 @@ def get_dataloader(
     shuffle: bool = True,
     num_workers: int = 0,
     **kwargs: Any,
-) -> DataLoader[tuple[torch.Tensor, torch.Tensor]]:
+) -> tuple[DataLoader[tuple[torch.Tensor, torch.Tensor]], torch.Tensor]:
     dataset = DigitSumDataset(data_dir)
-    return DataLoader(
+    loader = DataLoader(
         dataset,
         batch_size=batch_size,
         shuffle=shuffle,
         num_workers=num_workers,
         **kwargs,
     )
+    weights = dataset.get_class_weights()
+    return loader, weights

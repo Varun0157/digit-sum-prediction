@@ -1,0 +1,25 @@
+Data Quality Report - val
+==================================================
+Dataset size: 6000
+Image shape: (40, 168)
+Image dtype: uint8
+Label dtype: uint8
+
+Image Statistics:
+  Min pixel value: 0
+  Max pixel value: 255
+  Mean pixel value: 15.51
+  Std pixel value: 56.11
+
+Label Statistics:
+  Min label: 1
+  Max label: 36
+  Mean label: 17.80
+  Std label: 5.77
+  Unique labels: 36
+
+Quality Checks:
+  All images same shape: True
+  Contains NaN: False
+  Contains Inf: False
+  Class imbalance ratio: inf
