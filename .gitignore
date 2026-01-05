@@ -1,4 +1,5 @@
 ASSIGNMENT.md
 data/*.npy
+data/processed
 
 !**/.gitkeep
