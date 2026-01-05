@@ -1,38 +1,28 @@
 import os
-from typing import Callable
 
 import torch
 import torch.nn as nn
 import wandb
+from torch.utils.data import DataLoader
 
-from src.data import get_dataloader
 from src.loops import train_model
 
 
 def run_model(
-    model_fn: Callable[[int], nn.Module],
+    model: nn.Module,
     model_name: str,
     config: dict,
-    data_dir: str = "data/processed",
+    train_loader: DataLoader,
+    val_loader: DataLoader,
+    class_weights: torch.Tensor,
     ckpt_dir: str = "checkpoints",
 ) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    train_loader, train_weights = get_dataloader(
-        os.path.join(data_dir, "train"),
-        batch_size=config["batch_size"],
-        shuffle=True,
-    )
-    val_loader, _ = get_dataloader(
-        os.path.join(data_dir, "val"),
-        batch_size=config["batch_size"],
-        shuffle=False,
-    )
-
-    num_classes = len(train_weights)
-    model = model_fn(num_classes)
     model = model.to(device)
+    if class_weights is not None:
+        class_weights = class_weights.to(device)
 
     print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
 
@@ -55,7 +45,7 @@ def run_model(
         lr=config["lr"],
         device=device,
         ckpt_path=ckpt_path,
-        class_weights=train_weights,
+        class_weights=class_weights,
     )
 
     run.finish()

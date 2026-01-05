@@ -28,18 +28,28 @@ class DigitSumDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
         sample = self.samples[idx]
         assert sample.ndim == 2, f"Expected 2D grayscale image, got {sample.ndim}D"
 
-        sample_tensor = torch.from_numpy(sample).unsqueeze(0).float()
+        sample_tensor = torch.from_numpy(sample).unsqueeze(0).float() / 255.0
         label_tensor = torch.tensor(self.labels[idx], dtype=torch.long)
 
         return sample_tensor, label_tensor
 
-    def get_class_weights(self) -> torch.Tensor:
+    def get_class_weights(
+        self, weight_range: tuple[float, float] | None = (1.0, 10.0)
+    ) -> torch.Tensor:
         unique_classes = np.unique(self.labels)
         weights = compute_class_weight(
             class_weight="balanced",
             classes=unique_classes,
             y=self.labels,
         )
+
+        if weight_range is not None:
+            min_new, max_new = weight_range
+            min_weight, max_weight = weights.min(), weights.max()
+            weights = (
+                ((weights - min_weight) / (max_weight - min_weight))
+                * (max_new - min_new)
+            ) + min_new
 
         num_classes = int(self.labels.max()) + 1
         weight_tensor = torch.zeros(num_classes, dtype=torch.float32)
