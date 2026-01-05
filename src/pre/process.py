@@ -49,7 +49,9 @@ def split_data(
         random_state=random_state,
     )
 
-    print(f"Stratified split: {len(train_samples)} train, {len(val_samples)} val (ratio={val_ratio:.2f})")
+    print(
+        f"Stratified split: {len(train_samples)} train, {len(val_samples)} val (ratio={val_ratio:.2f})"
+    )
     return train_samples, train_labels, val_samples, val_labels
 
 

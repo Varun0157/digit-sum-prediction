@@ -160,7 +160,11 @@ def run_quality_checks(
     report_lines.append(f"  Contains Inf: {has_inf}")
 
     label_counts = np.bincount(labels)
-    imbalance_ratio = label_counts.max() / label_counts.min() if label_counts.min() > 0 else float('inf')
+    imbalance_ratio = (
+        label_counts.max() / label_counts.min()
+        if label_counts.min() > 0
+        else float("inf")
+    )
     report_lines.append(f"  Class imbalance ratio: {imbalance_ratio:.2f}")
 
     report = "\n".join(report_lines)
