@@ -7,6 +7,31 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 
+class EarlyStopping:
+    def __init__(self, patience: int = 10) -> None:
+        self.patience = patience
+        self.best_loss = float("inf")
+        self.best_accuracy = 0.0
+        self.epochs_without_improvement = 0
+
+    def update(self, val_loss: float, val_accuracy: float) -> None:
+        improved = False
+        if val_loss < self.best_loss:
+            self.best_loss = val_loss
+            improved = True
+        if val_accuracy > self.best_accuracy:
+            self.best_accuracy = val_accuracy
+            improved = True
+
+        if improved:
+            self.epochs_without_improvement = 0
+        else:
+            self.epochs_without_improvement += 1
+
+    def should_stop(self) -> bool:
+        return self.epochs_without_improvement >= self.patience
+
+
 def _get_loss_criterion(weights: torch.Tensor | None = None) -> nn.CrossEntropyLoss:
     return nn.CrossEntropyLoss(weight=weights, reduction="sum")
 
@@ -89,6 +114,7 @@ def train_model(
     device: torch.device,
     ckpt_path: str,
     class_weights: torch.Tensor | None = None,
+    patience: int = 10,
 ) -> None:
     print("\tTRAINING")
 
@@ -100,7 +126,9 @@ def train_model(
         class_weights = class_weights.to(device)
     criterion = _get_loss_criterion(class_weights)
 
+    early_stopping = EarlyStopping(patience=patience)
     min_val_loss = float("inf")
+
     for epoch in range(num_epochs):
         start_time = time.time()
 
@@ -117,12 +145,18 @@ def train_model(
             min_val_loss = val_loss
             torch.save(model.state_dict(), ckpt_path)
 
+        early_stopping.update(val_loss, accuracy)
+
         time_taken = time.time() - start_time
         print(
             f"epoch {epoch + 1}/{num_epochs} : train Loss: {train_loss:.4f}"
             + f" - val loss: {val_loss:.4f} val accuracy: {accuracy:.4f} "
             + f"-- time: {time_taken:.2f}s save_model: {save_model}"
         )
+
+        if early_stopping.should_stop():
+            print(f"Early stopping: no improvement for {patience} epochs")
+            break
 
 
 def test_model(
