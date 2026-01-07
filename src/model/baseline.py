@@ -15,9 +15,15 @@ class SimpleCNN(nn.Module):
         super().__init__()
 
         self.conv1 = nn.Conv2d(1, 32, kernel_size=kernel_size, padding=kernel_size // 2)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=kernel_size, padding=kernel_size // 2)
-        self.conv3 = nn.Conv2d(64, 128, kernel_size=kernel_size, padding=kernel_size // 2)
-        self.conv4 = nn.Conv2d(128, 128, kernel_size=kernel_size, padding=kernel_size // 2)
+        self.conv2 = nn.Conv2d(
+            32, 64, kernel_size=kernel_size, padding=kernel_size // 2
+        )
+        self.conv3 = nn.Conv2d(
+            64, 128, kernel_size=kernel_size, padding=kernel_size // 2
+        )
+        self.conv4 = nn.Conv2d(
+            128, 128, kernel_size=kernel_size, padding=kernel_size // 2
+        )
 
         match pool_type:
             case "max":
@@ -35,7 +41,7 @@ class SimpleCNN(nn.Module):
         x = self.pool(F.relu(self.conv2(x)))  # Nx32x20x84 -> Nx64x10x42
         x = self.pool(F.relu(self.conv3(x)))  # Nx64x10x42 -> Nx128x5x21
         x = self.pool(F.relu(self.conv4(x)))  # Nx128x5x21 -> Nx128x2x10
-        x = torch.flatten(x, 1)               # Nx128x2x10 -> Nx2560
-        x = F.relu(self.fc1(x))               # Nx2560 -> Nx256
-        x = self.fc2(x)                       # Nx256 -> Nx37
+        x = torch.flatten(x, 1)  # Nx128x2x10 -> Nx2560
+        x = F.relu(self.fc1(x))  # Nx2560 -> Nx256
+        x = self.fc2(x)  # Nx256 -> Nx37
         return x

@@ -8,28 +8,37 @@ from tqdm import tqdm
 
 
 class EarlyStopping:
-    def __init__(self, patience: int = 10) -> None:
+    def __init__(self, patience: int = 20) -> None:
         self.patience = patience
-        self.best_loss = float("inf")
-        self.best_accuracy = 0.0
-        self.epochs_without_improvement = 0
+        self.history: list[tuple[float, float]] = []
 
     def update(self, val_loss: float, val_accuracy: float) -> None:
-        improved = False
-        if val_loss < self.best_loss:
-            self.best_loss = val_loss
-            improved = True
-        if val_accuracy > self.best_accuracy:
-            self.best_accuracy = val_accuracy
-            improved = True
+        self.history.append((val_loss, val_accuracy))
 
-        if improved:
-            self.epochs_without_improvement = 0
-        else:
-            self.epochs_without_improvement += 1
+    def should_save(self) -> bool:
+        if not self.history:
+            return False
+        current_accuracy = self.history[-1][1]
+        best_accuracy = max(acc for _, acc in self.history)
+        return current_accuracy == best_accuracy
 
     def should_stop(self) -> bool:
-        return self.epochs_without_improvement >= self.patience
+        if len(self.history) <= self.patience:
+            return False
+
+        recent = self.history[-self.patience :]
+        before = self.history[: -self.patience]
+
+        if not before:
+            return False
+
+        best_loss_before = min(loss for loss, _ in before)
+        best_acc_before = max(acc for _, acc in before)
+
+        recent_improved = any(
+            loss < best_loss_before or acc > best_acc_before for loss, acc in recent
+        )
+        return not recent_improved
 
 
 def _get_loss_criterion(weights: torch.Tensor | None = None) -> nn.CrossEntropyLoss:
@@ -127,7 +136,6 @@ def train_model(
     criterion = _get_loss_criterion(class_weights)
 
     early_stopping = EarlyStopping(patience=patience)
-    min_val_loss = float("inf")
 
     for epoch in range(num_epochs):
         start_time = time.time()
@@ -140,12 +148,11 @@ def train_model(
             {"train/loss": train_loss, "val/loss": val_loss, "val/accuracy": accuracy}
         )
 
-        save_model = val_loss < min_val_loss
-        if save_model:
-            min_val_loss = val_loss
-            torch.save(model.state_dict(), ckpt_path)
-
         early_stopping.update(val_loss, accuracy)
+
+        save_model = early_stopping.should_save()
+        if save_model:
+            torch.save(model.state_dict(), ckpt_path)
 
         time_taken = time.time() - start_time
         print(

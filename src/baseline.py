@@ -7,7 +7,7 @@ from src.train import run_model
 
 def get_default_config() -> dict:
     return {
-        "batch_size": 32,
+        "batch_size": 128,
         "num_epochs": 200,
         "lr": 1e-3,
         "kernel_size": 5,
@@ -78,7 +78,7 @@ def sanity(balance: bool = True, pool_type: str = "max") -> None:
 def kernel(balance: bool = True, pool_type: str = "max") -> None:
     base_config = get_default_config()
     base_config["pool_type"] = pool_type
-    kernel_sizes = [3, 5, 7]
+    kernel_sizes = [3, 7]
 
     for kernel_size in kernel_sizes:
         config = {**base_config, "kernel_size": kernel_size}
