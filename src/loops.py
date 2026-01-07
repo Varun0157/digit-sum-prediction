@@ -1,8 +1,14 @@
+import json
+import os
 import time
 
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
 import torch
 import torch.nn as nn
 import wandb
+from sklearn.metrics import confusion_matrix, mean_absolute_error
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -64,6 +70,26 @@ def _calculate_accuracy(
 
     accuracy = correct / total
     return accuracy
+
+
+def _get_predictions(
+    model: nn.Module, dataloader: DataLoader, device: torch.device
+) -> tuple[list[int], list[int]]:
+    model.eval()
+
+    all_predictions = []
+    all_labels = []
+
+    with torch.no_grad():
+        for images, labels in tqdm(dataloader, desc="collecting predictions"):
+            images, labels = images.to(device), labels.to(device)
+            outputs = model(images)
+            _, predicted = torch.max(outputs.data, 1)
+
+            all_predictions.extend(predicted.cpu().numpy().tolist())
+            all_labels.extend(labels.cpu().numpy().tolist())
+
+    return all_predictions, all_labels
 
 
 def _test_epoch(
@@ -170,7 +196,9 @@ def test_model(
     model: nn.Module,
     test_dataloader: DataLoader,
     device: torch.device,
+    model_name: str,
     class_weights: torch.Tensor | None = None,
+    results_dir: str = "results",
 ) -> None:
     print("\tTESTING")
 
@@ -182,12 +210,50 @@ def test_model(
 
     test_loss = _test_epoch(model, test_dataloader, criterion, device)
     accuracy = _calculate_accuracy(model, test_dataloader, device)
+    predictions, labels = _get_predictions(model, test_dataloader, device)
 
-    wandb.log({"test/loss": test_loss, "test/accuracy": accuracy})
+    mae = mean_absolute_error(labels, predictions)
+    cm = confusion_matrix(labels, predictions)
+
+    wandb.log({
+        "test/loss": test_loss,
+        "test/accuracy": accuracy,
+        "test/mae": mae,
+        "test/confusion_matrix": wandb.plot.confusion_matrix(
+            probs=None,
+            y_true=labels,
+            preds=predictions,
+            class_names=[str(i) for i in range(len(cm))],
+        ),
+    })
+
+    model_results_dir = os.path.join(results_dir, model_name)
+    os.makedirs(model_results_dir, exist_ok=True)
+
+    metrics = {
+        "test_loss": float(test_loss),
+        "test_accuracy": float(accuracy),
+        "test_mae": float(mae),
+    }
+    with open(os.path.join(model_results_dir, "metrics.json"), "w") as f:
+        json.dump(metrics, f, indent=2)
+
+    np.save(os.path.join(model_results_dir, "confusion_matrix.npy"), cm)
+
+    plt.figure(figsize=(12, 10))
+    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
+    plt.title(f"Confusion Matrix - {model_name}")
+    plt.ylabel("True Label")
+    plt.xlabel("Predicted Label")
+    plt.tight_layout()
+    plt.savefig(os.path.join(model_results_dir, "confusion_matrix.png"), dpi=150)
+    plt.close()
 
     time_taken = time.time() - start_time
     print(
         f"test results: test loss: {test_loss:.4f}"
         + f" - test accuracy: {accuracy:.4f}"
+        + f" - MAE: {mae:.4f}"
         + f" -- time: {time_taken:.2f}s"
     )
+    print(f"Results saved to: {model_results_dir}")
