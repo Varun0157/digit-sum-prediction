@@ -213,7 +213,10 @@ def test_model(
     predictions, labels = _get_predictions(model, test_dataloader, device)
 
     mae = mean_absolute_error(labels, predictions)
-    cm = confusion_matrix(labels, predictions)
+
+    # Get number of classes from predictions/labels range
+    num_classes = max(max(labels), max(predictions)) + 1
+    cm = confusion_matrix(labels, predictions, labels=range(num_classes))
 
     wandb.log({
         "test/loss": test_loss,
@@ -223,7 +226,7 @@ def test_model(
             probs=None,
             y_true=labels,
             preds=predictions,
-            class_names=[str(i) for i in range(len(cm))],
+            class_names=[str(i) for i in range(num_classes)],
         ),
     })
 

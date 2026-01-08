@@ -2,6 +2,7 @@ import argparse
 import os
 
 import torch
+import wandb
 
 from src.data import get_dataloader
 from src.loops import test_model
@@ -114,9 +115,16 @@ def kernel(balance: bool = True, pool_type: str = "max") -> None:
         run_model(model, model_name, config, train_loader, val_loader, weights)
 
 
-def eval(balance: bool = True, pool_type: str = "max", ckpt_dir: str = "checkpoints") -> None:
+def eval(
+    balance: bool = True,
+    pool_type: str = "max",
+    kernel_size: int | None = None,
+    ckpt_dir: str = "checkpoints",
+) -> None:
     config = get_default_config()
     config["pool_type"] = pool_type
+    if kernel_size is not None:
+        config["kernel_size"] = kernel_size
 
     val_loader, val_weights = get_dataloader(
         "data/processed/val",
@@ -143,6 +151,13 @@ def eval(balance: bool = True, pool_type: str = "max", ckpt_dir: str = "checkpoi
     print(f"Loaded model from: {ckpt_path}")
     print(f"Using device: {device}")
 
+    run = wandb.init(
+        project="digit-sum-prediction",
+        name=f"eval_{model_name}",
+        config=config,
+        job_type="evaluation",
+    )
+
     weights = val_weights if balance else None
     test_model(
         model=model,
@@ -151,6 +166,8 @@ def eval(balance: bool = True, pool_type: str = "max", ckpt_dir: str = "checkpoi
         model_name=model_name,
         class_weights=weights,
     )
+
+    run.finish()
 
 
 if __name__ == "__main__":
@@ -174,6 +191,12 @@ if __name__ == "__main__":
         choices=["max", "avg"],
         help="Pooling type (max or avg)",
     )
+    parser.add_argument(
+        "--kernel",
+        type=int,
+        default=None,
+        help="Kernel size (for eval mode, overrides default)",
+    )
     args = parser.parse_args()
 
     match args.mode:
@@ -184,6 +207,10 @@ if __name__ == "__main__":
         case "kernel":
             kernel(balance=args.balance, pool_type=args.pool)
         case "eval":
-            eval(balance=args.balance, pool_type=args.pool)
+            eval(
+                balance=args.balance,
+                pool_type=args.pool,
+                kernel_size=args.kernel,
+            )
         case _:
             raise ValueError(f"Unknown mode: {args.mode}")
