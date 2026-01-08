@@ -33,6 +33,13 @@ Performance of different model configurations on the validation set:
 
 ![Best Model Confusion Matrix](static/baseline/best_model_confusion_matrix.png)
 
+#### Training Plots
+
+The plots for all training runs are available on request, with the sample for all average pooling runs shown below:
+| Train Loss | Validation Loss | Validation Accuracy |
+| ----- | ----- | ----- |
+| ![Train Loss](./static/baseline/wandb-plots/baseline-train-loss.png) | ![Val Loss](./static/baseline/wandb-plots/baseline-val-loss.png) | ![Val Acc](./static/baseline/wandb-plots/baseline-val-acc.png) |
+
 ### Key Findings from Ablation Studies
 
 #### Pooling Type
