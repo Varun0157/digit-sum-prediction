@@ -23,6 +23,10 @@ Performance of different model configurations on the validation set:
 
 **Best Model:** SimpleCNN with kernel size 7, average pooling, and unweighted loss achieves **59.77% accuracy** with **0.49 MAE**.
 
+### Confusion Matrix (Best Model)
+
+![Best Model Confusion Matrix](static/baseline/best_model_confusion_matrix.png)
+
 ## Key Findings from Ablation Studies
 
 ### Pooling Type
