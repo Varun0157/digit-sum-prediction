@@ -1,8 +1,12 @@
 # Digit Sum Prediction
 
-A CNN-based model for predicting the sum of digits in MNIST images. This project explores different architectural configurations including kernel sizes, pooling strategies, and class weighting approaches.
+**Goal**: predict the sum of handwritten digits.
 
-## Results
+![Sample images](./static/baseline/sample_images.png)
+
+## Baseline
+
+### Results
 
 Performance of different model configurations on the validation set:
 
@@ -23,19 +27,19 @@ Performance of different model configurations on the validation set:
 
 **Best Model:** SimpleCNN with kernel size 7, average pooling, and unweighted loss achieves **59.77% accuracy** with **0.49 MAE**.
 
-### Confusion Matrix (Best Model)
+#### Confusion Matrix (Best Model)
 
 ![Best Model Confusion Matrix](static/baseline/best_model_confusion_matrix.png)
 
-## Key Findings from Ablation Studies
+### Key Findings from Ablation Studies
 
-### Pooling Type
+#### Pooling Type
 
 ![Pooling Type Comparison](static/baseline/pooling_comparison.png)
 
 Average pooling consistently outperforms max pooling across metrics. This could be because of the spatial invariance it helps bring about.
 
-### Kernel Size
+#### Kernel Size
 
 ![Kernel Size Comparison](static/baseline/kernel_comparison.png)
 
@@ -43,7 +47,9 @@ For average pooling, the performance seems to improve as we scale kernel size. T
 
 For max pooling, the performance caps at a kernel size of 5 and degrades as we move to 7.
 
-### Class Weighting
+![Per Class Kernel Comparison](./static/baseline/perclass_kernel_comparison.png)
+
+#### Class Weighting
 
 ![Class Distribution](static/baseline/class_distribution.png)
 
@@ -55,9 +61,9 @@ Still, the unweighted model seems to perform better.
 ![Per-Class Weighting Comparison](static/baseline/perclass_weighting_comparison.png)
 The "balanced" model still seems to bring about some advantages, though. The rarer classes are better represented (as expected) even though the overall performance degrades. If we choose to optimise for a metric that favours these rarer classes, then this could be a useful approach.
 
-## Usage
+### Usage
 
-### Data Preprocessing
+#### Data Preprocessing
 
 Split raw data into train/val sets with stratification:
 
@@ -71,7 +77,7 @@ Analyze the processed data (generates visualizations and quality reports):
 uv run -m src.pre.analyse --data_dir data/processed --output_dir data/analysis --seed 42
 ```
 
-### Training
+#### Training
 
 Train with default configuration:
 
@@ -91,7 +97,7 @@ Sanity check (train and validate on training set):
 uv run -m src.baseline --mode sanity --balance --pool avg
 ```
 
-### Evaluation
+#### Evaluation
 
 Evaluate a trained model:
 
