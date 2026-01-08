@@ -29,6 +29,14 @@ Performance of different model configurations on the validation set:
 
 ![Pooling Type Comparison](static/baseline/pooling_comparison.png)
 
+### Kernel Size
+
+![Kernel Size Comparison](static/baseline/kernel_comparison.png)
+
+### Class Weighting
+
+![Class Weighting Comparison](static/baseline/weighting_comparison.png)
+
 ## Usage
 
 ### Training
