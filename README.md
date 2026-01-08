@@ -129,3 +129,5 @@ Evaluate all trained models:
 ```bash
 bash eval_all.sh
 ```
+
+NOTE: the checkpoints can be found [here](https://drive.google.com/drive/folders/12NJp2T7JPVG_FaXHWO5_D8R8zth-16D6?usp=sharing)
