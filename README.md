@@ -4,6 +4,8 @@
 
 ![Sample images](./static/baseline/sample_images.png)
 
+Some exploratory data analysis can be found [here](./data/analysis/).
+
 ## Baseline
 
 ### Results
@@ -48,6 +50,7 @@ For average pooling, the performance seems to improve as we scale kernel size. T
 For max pooling, the performance caps at a kernel size of 5 and degrades as we move to 7.
 
 ![Per Class Kernel Comparison](./static/baseline/perclass_kernel_comparison.png)
+Somehow, for rarer sums, we see that a kernel size of 5 occasionally out-performs a kernel size of 7.
 
 #### Class Weighting
 
@@ -60,6 +63,11 @@ Still, the unweighted model seems to perform better.
 
 ![Per-Class Weighting Comparison](static/baseline/perclass_weighting_comparison.png)
 The "balanced" model still seems to bring about some advantages, though. The rarer classes are better represented (as expected) even though the overall performance degrades. If we choose to optimise for a metric that favours these rarer classes, then this could be a useful approach.
+
+**Final Learnings**:
+
+- we should favour average pooling over max pooling
+- A kernel size of 7 seems to bring about the best overall performance, but larger kernel sizes may do even better. Also, a kernel size of 5 seems to do better on rare classes. Thus, a multi-branch CNN should be strongly considered for the final model.
 
 ### Usage
 
