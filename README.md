@@ -78,6 +78,10 @@ The "balanced" model still seems to bring about some advantages, though. The rar
 
 ### Usage
 
+```bash
+uv sync
+```
+
 #### Data Preprocessing
 
 Split raw data into train/val sets with stratification:
