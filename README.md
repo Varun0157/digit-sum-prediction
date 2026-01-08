@@ -35,9 +35,25 @@ Performance of different model configurations on the validation set:
 
 ### Class Weighting
 
+![Class Distribution](static/baseline/class_distribution.png)
+
 ![Class Weighting Comparison](static/baseline/weighting_comparison.png)
 
+![Per-Class Weighting Comparison](static/baseline/perclass_weighting_comparison.png)
+
 ## Usage
+
+### Data Preprocessing
+
+Split raw data into train/val sets with stratification:
+```bash
+uv run -m src.pre.process --data_dir data --output_dir data/processed --val_rat 0.2 --seed 42
+```
+
+Analyze the processed data (generates visualizations and quality reports):
+```bash
+uv run -m src.pre.analyse --data_dir data/processed --output_dir data/analysis --seed 42
+```
 
 ### Training
 
