@@ -6,18 +6,28 @@ A CNN-based model for predicting the sum of digits in MNIST images. This project
 
 Performance of different model configurations on the validation set:
 
-| Kernel | Test Accuracy (%) |  |  |  | Test MAE |  |  |  |
-|--------|----------|----------|----------|----------|------|------|------|------|
-|        | **Max-B** | **Max-U** | **Avg-B** | **Avg-U** | **Max-B** | **Max-U** | **Avg-B** | **Avg-U** |
-| **3**  | 26.28 | 25.42 | 28.53 | 30.08 | 1.27 | 1.33 | 1.21 | 1.17 |
-| **5**  | 36.25 | 38.32 | 52.07 | 45.22 | 0.94 | 0.87 | 0.61 | 0.73 |
-| **7**  | 28.07 | 34.52 | 56.15 | **59.77** | 1.25 | 0.98 | 0.56 | **0.49** |
+| Kernel Size | Pooling | Weighting | Test Accuracy | Test MAE |
+|-------------|---------|-----------|---------------|----------|
+| 3 | Max | Balanced | 26.28% | 1.27 |
+| 3 | Max | Unweighted | 25.42% | 1.33 |
+| 3 | Avg | Balanced | 28.53% | 1.21 |
+| 3 | Avg | Unweighted | 30.08% | 1.17 |
+| 5 | Max | Balanced | 36.25% | 0.94 |
+| 5 | Max | Unweighted | 38.32% | 0.87 |
+| 5 | Avg | Balanced | 52.07% | 0.61 |
+| 5 | Avg | Unweighted | 45.22% | 0.73 |
+| 7 | Max | Balanced | 28.07% | 1.25 |
+| 7 | Max | Unweighted | 34.52% | 0.98 |
+| 7 | Avg | Balanced | 56.15% | 0.56 |
+| **7** | **Avg** | **Unweighted** | **59.77%** | **0.49** |
 
-*B = Balanced (class-weighted), U = Unweighted*
-
-**Best Model:** Kernel size 7, average pooling, unweighted loss → **59.77% accuracy, 0.49 MAE**
+**Best Model:** SimpleCNN with kernel size 7, average pooling, and unweighted loss achieves **59.77% accuracy** with **0.49 MAE**.
 
 ## Key Findings from Ablation Studies
+
+### Pooling Type
+
+![Pooling Type Comparison](static/baseline/pooling_comparison.png)
 
 ## Usage
 
