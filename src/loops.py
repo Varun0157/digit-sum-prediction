@@ -218,17 +218,19 @@ def test_model(
     num_classes = max(max(labels), max(predictions)) + 1
     cm = confusion_matrix(labels, predictions, labels=range(num_classes))
 
-    wandb.log({
-        "test/loss": test_loss,
-        "test/accuracy": accuracy,
-        "test/mae": mae,
-        "test/confusion_matrix": wandb.plot.confusion_matrix(
-            probs=None,
-            y_true=labels,
-            preds=predictions,
-            class_names=[str(i) for i in range(num_classes)],
-        ),
-    })
+    wandb.log(
+        {
+            "test/loss": test_loss,
+            "test/accuracy": accuracy,
+            "test/mae": mae,
+            "test/confusion_matrix": wandb.plot.confusion_matrix(
+                probs=None,
+                y_true=labels,
+                preds=predictions,
+                class_names=[str(i) for i in range(num_classes)],
+            ),
+        }
+    )
 
     model_results_dir = os.path.join(results_dir, model_name)
     os.makedirs(model_results_dir, exist_ok=True)
