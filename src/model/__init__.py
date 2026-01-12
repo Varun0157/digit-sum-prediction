@@ -1,3 +1,5 @@
-from .baseline import SimpleCNN
+from .baseline import SimpleCNN, SimpleMNIST
+from .multibranch import MultiBranchCNN
+from .multihead import MultiHeadResNet
 
-__all__ = ["SimpleCNN"]
+__all__ = ["SimpleCNN", "SimpleMNIST", "MultiBranchCNN", "MultiHeadResNet"]
