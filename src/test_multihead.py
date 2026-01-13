@@ -5,8 +5,17 @@ Evaluates sum prediction accuracy using predicted digits from 4 heads.
 For validation set, also reports per-digit accuracy.
 
 Usage:
+    # Base model
     python -m src.test_multihead --checkpoint checkpoints/multihead_resnet_best.pth
+
+    # Large model (width_multiplier=1.25)
+    python -m src.test_multihead --checkpoint checkpoints/multihead_resnet_best_w125.pth --width_multiplier 1.25
+
+    # Evaluate on validation set
     python -m src.test_multihead --checkpoint checkpoints/multihead_resnet_best.pth --split val
+
+    # Large model on test set
+    python -m src.test_multihead --checkpoint checkpoints/multihead_resnet_best_w125.pth --width_multiplier 1.25 --split test
 """
 
 import argparse
@@ -153,13 +162,18 @@ def main():
                         help='Output directory for results (default: results/multihead_resnet_{split})')
     parser.add_argument('--dropout', type=float, default=0.3,
                         help='Dropout rate (must match training)')
+    parser.add_argument('--width_multiplier', type=float, default=1.0,
+                        help='Model width multiplier (must match training)')
     args = parser.parse_args()
 
     # Set defaults based on split
     if args.data_dir is None:
         args.data_dir = f'data/multi/{args.split}'
     if args.output_dir is None:
-        args.output_dir = f'results/multihead_resnet_{args.split}'
+        output_name = 'multihead_resnet'
+        if args.width_multiplier != 1.0:
+            output_name += f'_w{args.width_multiplier:.2f}'.replace('.', '')
+        args.output_dir = f'results/{output_name}_{args.split}'
 
     has_digit_labels = (args.split == 'val')
 
@@ -187,7 +201,7 @@ def main():
     print("LOADING MODEL")
     print("="*60)
 
-    model = MultiHeadResNet(num_digits=4, dropout=args.dropout).to(device)
+    model = MultiHeadResNet(num_digits=4, dropout=args.dropout, width_multiplier=args.width_multiplier).to(device)
     checkpoint = torch.load(args.checkpoint, map_location=device)
     model.load_state_dict(checkpoint)
     model.eval()

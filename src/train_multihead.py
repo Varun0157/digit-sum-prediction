@@ -2,7 +2,17 @@
 Training script for multi-head ResNet model.
 
 Usage:
+    # Base model (~1.2M params)
     python -m src.train_multihead --epochs 100 --lr 1e-3 --batch_size 128
+
+    # Large model (~2M params)
+    python -m src.train_multihead --epochs 100 --lr 1e-3 --batch_size 128 --width_multiplier 1.25
+
+    # With augmentation
+    python -m src.train_multihead --epochs 100 --lr 1e-3 --batch_size 128 --augment
+
+    # Large model + augmentation
+    python -m src.train_multihead --epochs 100 --lr 1e-3 --batch_size 128 --width_multiplier 1.25 --augment
 """
 
 import argparse
@@ -13,6 +23,7 @@ from pathlib import Path
 import numpy as np
 import torch
 import torch.nn as nn
+import torchvision.transforms as T
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
 import wandb
@@ -20,13 +31,27 @@ import wandb
 from src.model.multihead import MultiHeadResNet
 
 
+class GaussianNoise(nn.Module):
+    """Add Gaussian noise to image."""
+    def __init__(self, std=0.02):
+        super().__init__()
+        self.std = std
+
+    def forward(self, x):
+        if self.training:
+            noise = torch.randn_like(x) * self.std
+            return torch.clamp(x + noise, 0, 1)
+        return x
+
+
 class MultiDigitDataset(Dataset):
     """Dataset for multi-head digit prediction."""
 
-    def __init__(self, data_dir):
+    def __init__(self, data_dir, augment=False):
         """
         Args:
             data_dir: Path to data directory (e.g., 'data/multi/train')
+            augment: Apply data augmentation (only for training)
         """
         self.samples = np.load(f'{data_dir}/samples.npy')
         self.digit_labels = np.load(f'{data_dir}/digit_labels.npy')
@@ -35,6 +60,21 @@ class MultiDigitDataset(Dataset):
         # Normalize to [0, 1]
         self.samples = self.samples.astype(np.float32) / 255.0
 
+        self.augment = augment
+        if augment:
+            self.transform = T.Compose([
+                T.RandomRotation(degrees=5, fill=0),
+                T.RandomAffine(
+                    degrees=0,
+                    translate=(0.05, 0.05),
+                    fill=0
+                ),
+                GaussianNoise(std=0.02),
+                T.RandomErasing(p=0.1, scale=(0.02, 0.1), ratio=(0.3, 3.3), value=0),
+            ])
+        else:
+            self.transform = None
+
     def __len__(self):
         return len(self.samples)
 
@@ -42,6 +82,9 @@ class MultiDigitDataset(Dataset):
         img = torch.from_numpy(self.samples[idx]).unsqueeze(0)  # Add channel dim
         digits = torch.from_numpy(self.digit_labels[idx]).long()  # 4 digit labels
         sum_label = torch.tensor(self.sum_labels[idx]).long()
+
+        if self.augment and self.transform is not None:
+            img = self.transform(img)
 
         return img, digits, sum_label
 
@@ -152,6 +195,8 @@ def main():
     parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate')
     parser.add_argument('--batch_size', type=int, default=128, help='Batch size')
     parser.add_argument('--dropout', type=float, default=0.3, help='Dropout rate')
+    parser.add_argument('--augment', action='store_true', help='Enable data augmentation')
+    parser.add_argument('--width_multiplier', type=float, default=1.0, help='Model width multiplier (1.0=base ~1.2M, 1.25=large ~2M)')
     parser.add_argument('--data_dir', type=str, default='data/multi', help='Data directory')
     parser.add_argument('--checkpoint_dir', type=str, default='checkpoints', help='Checkpoint directory')
     parser.add_argument('--wandb_project', type=str, default='digit-sum-prediction', help='W&B project name')
@@ -161,24 +206,36 @@ def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
 
+    # Build run name suffix
+    name_suffix = []
+    if args.width_multiplier != 1.0:
+        name_suffix.append(f'w{args.width_multiplier:.2f}'.replace('.', ''))
+    if args.augment:
+        name_suffix.append('aug')
+    run_name = 'MultiHeadResNet' + ('_' + '_'.join(name_suffix) if name_suffix else '')
+
     # Initialize wandb
     if not args.no_wandb:
         wandb.init(
             project=args.wandb_project,
-            name='MultiHeadResNet',
+            name=run_name,
             config={
                 'model': 'MultiHeadResNet',
                 'epochs': args.epochs,
                 'lr': args.lr,
                 'batch_size': args.batch_size,
                 'dropout': args.dropout,
+                'augment': args.augment,
+                'width_multiplier': args.width_multiplier,
             }
         )
 
     # Load datasets
     print("\nLoading datasets...")
-    train_dataset = MultiDigitDataset(f'{args.data_dir}/train')
-    val_dataset = MultiDigitDataset(f'{args.data_dir}/val')
+    print(f"Data augmentation: {'ENABLED' if args.augment else 'DISABLED'}")
+    print(f"Model width multiplier: {args.width_multiplier}")
+    train_dataset = MultiDigitDataset(f'{args.data_dir}/train', augment=args.augment)
+    val_dataset = MultiDigitDataset(f'{args.data_dir}/val', augment=False)
 
     print(f"Train: {len(train_dataset)} samples")
     print(f"Val: {len(val_dataset)} samples")
@@ -201,7 +258,7 @@ def main():
 
     # Create model
     print("\nInitializing model...")
-    model = MultiHeadResNet(num_digits=4, dropout=args.dropout).to(device)
+    model = MultiHeadResNet(num_digits=4, dropout=args.dropout, width_multiplier=args.width_multiplier).to(device)
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Total parameters: {total_params:,}")
@@ -251,7 +308,14 @@ def main():
         # Save best model
         if val_sum_acc > best_sum_acc:
             best_sum_acc = val_sum_acc
-            checkpoint_path = f'{args.checkpoint_dir}/multihead_resnet_best.pth'
+            # Build checkpoint name
+            checkpoint_name = 'multihead_resnet_best'
+            if args.width_multiplier != 1.0:
+                checkpoint_name += f'_w{args.width_multiplier:.2f}'.replace('.', '')
+            if args.augment:
+                checkpoint_name += '_aug'
+            checkpoint_name += '.pth'
+            checkpoint_path = f'{args.checkpoint_dir}/{checkpoint_name}'
             torch.save(model.state_dict(), checkpoint_path)
             print(f"✓ Saved best model (sum_acc={val_sum_acc*100:.2f}%)")
 
@@ -259,7 +323,15 @@ def main():
     print("TRAINING COMPLETE")
     print("="*60)
     print(f"Best validation sum accuracy: {best_sum_acc*100:.2f}%")
-    print(f"Model saved to: {args.checkpoint_dir}/multihead_resnet_best.pth")
+
+    # Print final checkpoint name
+    checkpoint_name = 'multihead_resnet_best'
+    if args.width_multiplier != 1.0:
+        checkpoint_name += f'_w{args.width_multiplier:.2f}'.replace('.', '')
+    if args.augment:
+        checkpoint_name += '_aug'
+    checkpoint_name += '.pth'
+    print(f"Model saved to: {args.checkpoint_dir}/{checkpoint_name}")
 
     if not args.no_wandb:
         wandb.finish()
