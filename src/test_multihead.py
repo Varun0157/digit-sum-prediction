@@ -11,11 +11,11 @@ Usage:
     # Large model (width_multiplier=1.25)
     python -m src.test_multihead --checkpoint checkpoints/multihead_resnet_best_w125.pth --width_multiplier 1.25
 
+    # Kernel size ablation
+    python -m src.test_multihead --checkpoint checkpoints/multihead_resnet_best_k3.pth --kernel_size 3
+
     # Evaluate on validation set
     python -m src.test_multihead --checkpoint checkpoints/multihead_resnet_best.pth --split val
-
-    # Large model on test set
-    python -m src.test_multihead --checkpoint checkpoints/multihead_resnet_best_w125.pth --width_multiplier 1.25 --split test
 """
 
 import argparse
@@ -164,6 +164,8 @@ def main():
                         help='Dropout rate (must match training)')
     parser.add_argument('--width_multiplier', type=float, default=1.0,
                         help='Model width multiplier (must match training)')
+    parser.add_argument('--kernel_size', type=int, default=7, choices=[3, 5, 7],
+                        help='Initial conv kernel size (must match training)')
     args = parser.parse_args()
 
     # Set defaults based on split
@@ -171,6 +173,8 @@ def main():
         args.data_dir = f'data/multi/{args.split}'
     if args.output_dir is None:
         output_name = 'multihead_resnet'
+        if args.kernel_size != 7:
+            output_name += f'_k{args.kernel_size}'
         if args.width_multiplier != 1.0:
             output_name += f'_w{args.width_multiplier:.2f}'.replace('.', '')
         args.output_dir = f'results/{output_name}_{args.split}'
@@ -201,7 +205,7 @@ def main():
     print("LOADING MODEL")
     print("="*60)
 
-    model = MultiHeadResNet(num_digits=4, dropout=args.dropout, width_multiplier=args.width_multiplier).to(device)
+    model = MultiHeadResNet(num_digits=4, dropout=args.dropout, width_multiplier=args.width_multiplier, kernel_size=args.kernel_size).to(device)
     checkpoint = torch.load(args.checkpoint, map_location=device)
     model.load_state_dict(checkpoint)
     model.eval()

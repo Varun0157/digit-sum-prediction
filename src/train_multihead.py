@@ -11,8 +11,10 @@ Usage:
     # With augmentation
     python -m src.train_multihead --epochs 100 --lr 1e-3 --batch_size 128 --augment
 
-    # Large model + augmentation
-    python -m src.train_multihead --epochs 100 --lr 1e-3 --batch_size 128 --width_multiplier 1.25 --augment
+    # Kernel size ablation
+    python -m src.train_multihead --epochs 100 --kernel_size 3
+    python -m src.train_multihead --epochs 100 --kernel_size 5
+    python -m src.train_multihead --epochs 100 --kernel_size 7  # default
 """
 
 import argparse
@@ -29,6 +31,56 @@ from tqdm import tqdm
 import wandb
 
 from src.model.multihead import MultiHeadResNet
+
+
+class EarlyStopping:
+    """
+    Early stopping to stop training when validation metrics stop improving.
+
+    Monitors both validation loss and validation accuracy. Training stops
+    if neither metric improves for `patience` consecutive epochs.
+    """
+
+    def __init__(self, patience=0):
+        """
+        Args:
+            patience: Number of epochs to wait for improvement (0=disabled)
+        """
+        self.patience = patience
+        self.best_loss = float('inf')
+        self.best_acc = 0.0
+        self.epochs_without_improvement = 0
+
+    def step(self, val_loss, val_acc):
+        """
+        Check if training should stop.
+
+        Returns:
+            (should_stop, improved_loss, improved_acc)
+        """
+        improved_loss = val_loss < self.best_loss
+        improved_acc = val_acc > self.best_acc
+
+        if improved_loss:
+            self.best_loss = val_loss
+        if improved_acc:
+            self.best_acc = val_acc
+
+        if improved_loss or improved_acc:
+            self.epochs_without_improvement = 0
+        else:
+            self.epochs_without_improvement += 1
+
+        should_stop = (self.patience > 0 and
+                       self.epochs_without_improvement >= self.patience)
+
+        return should_stop, improved_loss, improved_acc
+
+    def status(self):
+        """Return current patience status string."""
+        if self.patience > 0:
+            return f"{self.epochs_without_improvement}/{self.patience}"
+        return None
 
 
 class GaussianNoise(nn.Module):
@@ -89,7 +141,7 @@ class MultiDigitDataset(Dataset):
         return img, digits, sum_label
 
 
-def train_epoch(model, dataloader, criterions, optimizer, device):
+def train_epoch(model, dataloader, criterions, optimizer, device, sum_loss_weight=0.0):
     """Train for one epoch."""
     model.train()
 
@@ -98,9 +150,10 @@ def train_epoch(model, dataloader, criterions, optimizer, device):
     digit_total = 0
 
     pbar = tqdm(dataloader, desc="Training")
-    for imgs, digit_labels, _ in pbar:
+    for imgs, digit_labels, sum_labels in pbar:
         imgs = imgs.to(device)
         digit_labels = digit_labels.to(device)  # Nx4
+        sum_labels = sum_labels.to(device)
 
         optimizer.zero_grad()
 
@@ -108,9 +161,23 @@ def train_epoch(model, dataloader, criterions, optimizer, device):
         outputs = model(imgs)  # List of 4 x [Nx10]
 
         # Compute loss for each head
-        loss = 0
+        digit_loss = 0
         for i, (output, criterion) in enumerate(zip(outputs, criterions)):
-            loss += criterion(output, digit_labels[:, i])
+            digit_loss += criterion(output, digit_labels[:, i])
+
+        # Compute differentiable sum loss if weight > 0
+        if sum_loss_weight > 0:
+            digit_values = torch.arange(10, device=device).float()
+            expected_digits = []
+            for output in outputs:
+                probs = torch.softmax(output, dim=1)  # Nx10
+                expected = (probs * digit_values).sum(dim=1)  # N
+                expected_digits.append(expected)
+            predicted_sum = torch.stack(expected_digits, dim=1).sum(dim=1)
+            sum_loss = nn.functional.mse_loss(predicted_sum, sum_labels.float())
+            loss = digit_loss + sum_loss_weight * sum_loss
+        else:
+            loss = digit_loss
 
         loss.backward()
         optimizer.step()
@@ -197,6 +264,9 @@ def main():
     parser.add_argument('--dropout', type=float, default=0.3, help='Dropout rate')
     parser.add_argument('--augment', action='store_true', help='Enable data augmentation')
     parser.add_argument('--width_multiplier', type=float, default=1.0, help='Model width multiplier (1.0=base ~1.2M, 1.25=large ~2M)')
+    parser.add_argument('--kernel_size', type=int, default=7, choices=[3, 5, 7], help='Initial conv kernel size (default: 7)')
+    parser.add_argument('--sum_loss_weight', type=float, default=0.0, help='Weight for differentiable sum loss (default: 0.0, disabled)')
+    parser.add_argument('--patience', type=int, default=0, help='Early stopping patience (0=disabled). Stops if neither val loss nor val acc improves for this many epochs.')
     parser.add_argument('--data_dir', type=str, default='data/multi', help='Data directory')
     parser.add_argument('--checkpoint_dir', type=str, default='checkpoints', help='Checkpoint directory')
     parser.add_argument('--wandb_project', type=str, default='digit-sum-prediction', help='W&B project name')
@@ -208,8 +278,12 @@ def main():
 
     # Build run name suffix
     name_suffix = []
+    if args.kernel_size != 7:
+        name_suffix.append(f'k{args.kernel_size}')
     if args.width_multiplier != 1.0:
         name_suffix.append(f'w{args.width_multiplier:.2f}'.replace('.', ''))
+    if args.sum_loss_weight > 0:
+        name_suffix.append(f'sum{args.sum_loss_weight}'.replace('.', ''))
     if args.augment:
         name_suffix.append('aug')
     run_name = 'MultiHeadResNet' + ('_' + '_'.join(name_suffix) if name_suffix else '')
@@ -227,6 +301,8 @@ def main():
                 'dropout': args.dropout,
                 'augment': args.augment,
                 'width_multiplier': args.width_multiplier,
+                'kernel_size': args.kernel_size,
+                'sum_loss_weight': args.sum_loss_weight,
             }
         )
 
@@ -234,6 +310,8 @@ def main():
     print("\nLoading datasets...")
     print(f"Data augmentation: {'ENABLED' if args.augment else 'DISABLED'}")
     print(f"Model width multiplier: {args.width_multiplier}")
+    print(f"Initial kernel size: {args.kernel_size}")
+    print(f"Sum loss weight: {args.sum_loss_weight}")
     train_dataset = MultiDigitDataset(f'{args.data_dir}/train', augment=args.augment)
     val_dataset = MultiDigitDataset(f'{args.data_dir}/val', augment=False)
 
@@ -258,7 +336,7 @@ def main():
 
     # Create model
     print("\nInitializing model...")
-    model = MultiHeadResNet(num_digits=4, dropout=args.dropout, width_multiplier=args.width_multiplier).to(device)
+    model = MultiHeadResNet(num_digits=4, dropout=args.dropout, width_multiplier=args.width_multiplier, kernel_size=args.kernel_size).to(device)
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Total parameters: {total_params:,}")
@@ -273,14 +351,14 @@ def main():
     print("="*60)
 
     os.makedirs(args.checkpoint_dir, exist_ok=True)
-    best_sum_acc = 0.0
+    early_stopping = EarlyStopping(patience=args.patience)
 
     for epoch in range(1, args.epochs + 1):
         print(f"\nEpoch {epoch}/{args.epochs}")
 
         # Train
         train_loss, train_digit_accs, train_avg_acc = train_epoch(
-            model, train_loader, criterions, optimizer, device
+            model, train_loader, criterions, optimizer, device, args.sum_loss_weight
         )
 
         # Validate
@@ -305,13 +383,18 @@ def main():
                 **{f'val/digit{i+1}_acc': acc for i, acc in enumerate(val_digit_accs)}
             })
 
-        # Save best model
-        if val_sum_acc > best_sum_acc:
-            best_sum_acc = val_sum_acc
-            # Build checkpoint name
+        # Early stopping check
+        should_stop, _, improved_acc = early_stopping.step(val_loss, val_sum_acc)
+
+        # Save best model (when accuracy improves)
+        if improved_acc:
             checkpoint_name = 'multihead_resnet_best'
+            if args.kernel_size != 7:
+                checkpoint_name += f'_k{args.kernel_size}'
             if args.width_multiplier != 1.0:
                 checkpoint_name += f'_w{args.width_multiplier:.2f}'.replace('.', '')
+            if args.sum_loss_weight > 0:
+                checkpoint_name += f'_sum{args.sum_loss_weight}'.replace('.', '')
             if args.augment:
                 checkpoint_name += '_aug'
             checkpoint_name += '.pth'
@@ -319,15 +402,26 @@ def main():
             torch.save(model.state_dict(), checkpoint_path)
             print(f"✓ Saved best model (sum_acc={val_sum_acc*100:.2f}%)")
 
+        # Print patience status and check for early stop
+        if early_stopping.status():
+            print(f"  Patience: {early_stopping.status()}")
+        if should_stop:
+            print(f"\nEarly stopping triggered after {epoch} epochs")
+            break
+
     print("\n" + "="*60)
     print("TRAINING COMPLETE")
     print("="*60)
-    print(f"Best validation sum accuracy: {best_sum_acc*100:.2f}%")
+    print(f"Best validation sum accuracy: {early_stopping.best_acc*100:.2f}%")
 
     # Print final checkpoint name
     checkpoint_name = 'multihead_resnet_best'
+    if args.kernel_size != 7:
+        checkpoint_name += f'_k{args.kernel_size}'
     if args.width_multiplier != 1.0:
         checkpoint_name += f'_w{args.width_multiplier:.2f}'.replace('.', '')
+    if args.sum_loss_weight > 0:
+        checkpoint_name += f'_sum{args.sum_loss_weight}'.replace('.', '')
     if args.augment:
         checkpoint_name += '_aug'
     checkpoint_name += '.pth'

@@ -67,19 +67,21 @@ class MultiHeadResNet(nn.Module):
     Backbone extracts shared features, then 4 heads predict each digit.
     """
 
-    def __init__(self, num_digits=4, dropout=0.3, width_multiplier=1.0):
+    def __init__(self, num_digits=4, dropout=0.3, width_multiplier=1.0, kernel_size=7):
         super().__init__()
 
         self.num_digits = num_digits
         self.width_multiplier = width_multiplier
+        self.kernel_size = kernel_size
 
         # Calculate channel dimensions based on width multiplier
         base_channels = [32, 64, 128, 256]
         channels = [int(c * width_multiplier) for c in base_channels]
         c1, c2, c3, c4 = channels
 
-        # Initial convolution
-        self.conv1 = nn.Conv2d(1, c1, kernel_size=7, stride=2, padding=3, bias=False)
+        # Initial convolution (kernel_size configurable for ablation)
+        padding = kernel_size // 2  # same padding
+        self.conv1 = nn.Conv2d(1, c1, kernel_size=kernel_size, stride=2, padding=padding, bias=False)
         self.bn1 = nn.BatchNorm2d(c1)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
@@ -131,3 +133,69 @@ class MultiHeadResNet(nn.Module):
         outputs = [head(x) for head in self.heads]
 
         return outputs  # Returns list of 4 tensors, each Nx10
+
+
+class MultiHeadSpatialAttention(nn.Module):
+    """
+    Multi-head model with per-head spatial attention.
+
+    Each head learns to attend to its specific digit position,
+    replacing global average pooling with learned attention-weighted pooling.
+    """
+
+    def __init__(self, num_digits=4, dropout=0.3):
+        super().__init__()
+
+        self.num_digits = num_digits
+        c1, c2, c3, c4 = 32, 64, 128, 256
+
+        # Initial convolution
+        self.conv1 = nn.Conv2d(1, c1, kernel_size=7, stride=2, padding=3, bias=False)
+        self.bn1 = nn.BatchNorm2d(c1)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+
+        # Residual blocks
+        self.layer1 = ResidualBlock(c1, c2, stride=1)
+        self.layer2 = ResidualBlock(c2, c3, stride=2)
+        self.layer3 = ResidualBlock(c3, c4, stride=2)
+
+        # Per-head spatial attention
+        self.spatial_attention = nn.ModuleList([
+            nn.Sequential(
+                nn.Conv2d(c4, c4 // 4, kernel_size=1),
+                nn.ReLU(),
+                nn.Conv2d(c4 // 4, 1, kernel_size=1)
+            ) for _ in range(num_digits)
+        ])
+
+        self.dropout = nn.Dropout(dropout)
+
+        # Classification heads
+        self.heads = nn.ModuleList([
+            nn.Linear(c4, 10) for _ in range(num_digits)
+        ])
+
+    def forward(self, x):
+        # Backbone
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = self.maxpool(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        # x: (N, 256, H, W) where H~3, W~11
+
+        N, C, H, W = x.shape
+        x_flat = x.view(N, C, -1)  # (N, 256, H*W)
+
+        outputs = []
+        for attn_net, head in zip(self.spatial_attention, self.heads):
+            # Compute attention map
+            attn_logits = attn_net(x).view(N, -1)  # (N, H*W)
+            attn_weights = F.softmax(attn_logits, dim=1)  # (N, H*W)
+
+            # Attention-weighted pooling
+            pooled = torch.bmm(x_flat, attn_weights.unsqueeze(2)).squeeze(2)  # (N, 256)
+            pooled = self.dropout(pooled)
+            outputs.append(head(pooled))
+
+        return outputs
