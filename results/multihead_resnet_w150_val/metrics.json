@@ -1,0 +1,15 @@
+{
+  "checkpoint": "checkpoints/multihead_resnet_best_w150.pth",
+  "split": "val",
+  "num_samples": 3000,
+  "sum_accuracy": 0.9333333333333333,
+  "mae": 0.3016666666666667,
+  "parameters": 2957764,
+  "avg_digit_accuracy": 0.9693333333333334,
+  "digit_accuracies": [
+    0.973,
+    0.967,
+    0.9633333333333334,
+    0.974
+  ]
+}

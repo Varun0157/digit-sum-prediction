@@ -1,0 +1,8 @@
+{
+  "checkpoint": "checkpoints/multihead_resnet_best_w125.pth",
+  "split": "test",
+  "num_samples": 3000,
+  "sum_accuracy": 0.9103333333333333,
+  "mae": 0.4106666666666667,
+  "parameters": 2056512
+}

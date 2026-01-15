@@ -1,0 +1,15 @@
+{
+  "checkpoint": "checkpoints/multihead_resnet_best_k3.pth",
+  "split": "val",
+  "num_samples": 3000,
+  "sum_accuracy": 0.9166666666666666,
+  "mae": 0.38966666666666666,
+  "parameters": 1217544,
+  "avg_digit_accuracy": 0.9650000000000001,
+  "digit_accuracies": [
+    0.969,
+    0.9643333333333334,
+    0.9573333333333334,
+    0.9693333333333334
+  ]
+}
