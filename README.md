@@ -256,6 +256,32 @@ We applied standard data augmentation techniques to improve generalization:
 | k3            | 91.67%      | 91.97%       | 0.39     | 0.35     | 96.50%        | 1.22M  |
 | spatial       | 90.87%      | 90.50%       | 0.40     | 0.41     | 96.26%        | 1.22M  |
 
+###### Detailed Analysis
+
+**Test Set Class Distribution**
+
+The test set follows a Gaussian-like distribution centered around sum=17. We define rare classes as the extreme ends (0-5, 31-36) with <40 samples each, and common classes as the middle range (12-24) with 111-229 samples each.
+
+![Test Set Class Distribution](./static/main/class_distribution_test.png)
+
+**Rare vs Common Class Performance**
+
+Analyzing per-class accuracy reveals that some configurations handle class imbalance better than others. Notably, `sum1.0` and `k3` actually perform *better* on rare classes, while `aug` achieves perfect balance with the highest overall accuracy.
+
+![Rare vs Common Class Performance](./static/main/rare_vs_common.png)
+
+**Per-Digit Position Accuracy**
+
+Digit 3 (third position) is consistently the hardest to classify across all configurations (96.10% avg ± 0.51%), while Digits 1 and 4 are easiest (97.23% avg). This may be due to middle digits being harder to segment or having more overlap with neighbors.
+
+![Per-Digit Position Accuracy](./static/main/per_digit_accuracy.png)
+
+**Error Pattern Analysis**
+
+Only ~33% of errors are off-by-1 or off-by-2, meaning most misclassifications are larger errors (likely due to a single digit being completely wrong). The `aug` configuration has the fewest total errors (191 vs 221 baseline).
+
+![Error Type Breakdown](./static/main/error_breakdown.png)
+
 # TODO
 
 - [ ] push to gh classroom
