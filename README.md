@@ -276,12 +276,6 @@ Digit 3 (third position) is consistently the hardest to classify across all conf
 
 ![Per-Digit Position Accuracy](./static/main/per_digit_accuracy.png)
 
-**Error Pattern Analysis**
-
-Only ~33% of errors are off-by-1 or off-by-2, meaning most misclassifications are larger errors (likely due to a single digit being completely wrong). The `aug` configuration has the fewest total errors (191 vs 221 baseline).
-
-![Error Type Breakdown](./static/main/error_breakdown.png)
-
 # TODO
 
 - [ ] push to gh classroom
