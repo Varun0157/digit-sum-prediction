@@ -197,34 +197,63 @@ Immediately, we see a significant boost in performance. With just about a millio
 
 ###### Deeper and Wider
 
+We add a "width multiplier" that essentially:
+
+- scales the channel dimensions through the backbone
+- makes the classification heads two layer MLPs
+  Thus, the models are essentially deeper and wider.
+
 ![Width Comparison](./static/main/width_comparison.png)
+
+However, we see that this does not aid performance much, suggesting that our initial model is "good enough" for the task at hand.
 
 ###### Initial Kernel Sizes
 
+On altering the initial kernel size of the ResNet backbone, we notice:
+
 ![Kernel Comparison](./static/main/kernel_comparison.png)
+
+The small kernel sizes severely under-perform. The kernel size of 5 does slightly better on the val set than that of 7, but slightly under-performs on the test set. Since the performance does not scale much with size, we end our experiments here.
 
 ###### Regularising Using Total Sum
 
+We hypothesized that adding an auxiliary loss term for the total sum might help the model learn more coherent digit predictions. The sum loss computes a differentiable expected value for each digit (E[digit] = Σ(softmax_prob_i × i)) and applies MSE against the ground truth sum. This encourages digit predictions that are collectively consistent with the known total.
+
 ![Sum Loss Comparison](./static/main/sumloss_comparison.png)
+
+However, as shown above, adding sum regularization (weights 0.5 and 1.0) did not improve performance over the baseline. The individual digit supervision appears sufficient for learning accurate predictions.
 
 ###### Spatial Attention
 
+We explored whether learned spatial attention could outperform global average pooling. The hypothesis was that different digit positions might benefit from focusing on different spatial regions of the feature maps. We implemented per-head spatial attention that learns to weight spatial locations before classification.
+
+![Spatial Attention Comparison](./static/main/spatial_comparison.png)
+
+Surprisingly, spatial attention underperformed the baseline by ~2%. Global average pooling's uniform weighting appears to be a better inductive bias for this task, possibly because digits are well-separated and don't require selective attention.
+
 ###### Augmentation
+
+We applied standard data augmentation techniques to improve generalization:
+- **RandomRotation**: ±5° rotation
+- **RandomAffine**: 5% translation
+- **GaussianNoise**: σ=0.02
+- **RandomErasing**: 10% probability, small patches
 
 ![Augmentation Comparison](./static/main/augmentation_comparison.png)
 
 ###### Summary
 
-| Config | Val Sum Acc | Test Sum Acc | Val Digit Acc | Params |
-|--------|-------------|--------------|---------------|--------|
-| **aug** | **94.63%** | **93.63%** | **97.25%** | 1.22M |
-| k5 | 93.40% | 93.07% | 96.92% | 1.22M |
-| w1.50 | 93.33% | 92.93% | 96.93% | 2.96M |
-| sum0.5 | 93.33% | 92.43% | 96.93% | 1.22M |
-| baseline (k7) | 93.07% | 92.63% | 96.87% | 1.22M |
-| sum1.0 | 92.90% | 92.33% | 96.81% | 1.22M |
-| w1.25 | 92.13% | 91.03% | 96.63% | 2.06M |
-| k3 | 91.67% | 91.97% | 96.50% | 1.22M |
+| Config        | Val Sum Acc | Test Sum Acc | Val MAE | Test MAE | Val Digit Acc | Params |
+| ------------- | ----------- | ------------ | ------- | -------- | ------------- | ------ |
+| **aug**       | **94.63%**  | **93.63%**   | **0.25**| **0.28** | **97.25%**    | 1.22M  |
+| k5            | 93.40%      | 93.07%       | 0.32    | 0.31     | 96.92%        | 1.22M  |
+| w1.50         | 93.33%      | 92.93%       | 0.30    | 0.32     | 96.93%        | 2.96M  |
+| sum0.5        | 93.33%      | 92.43%       | 0.29    | 0.30     | 96.93%        | 1.22M  |
+| baseline (k7) | 93.07%      | 92.63%       | 0.31    | 0.32     | 96.87%        | 1.22M  |
+| sum1.0        | 92.90%      | 92.33%       | 0.30    | 0.31     | 96.81%        | 1.22M  |
+| w1.25         | 92.13%      | 91.03%       | 0.36    | 0.41     | 96.63%        | 2.06M  |
+| k3            | 91.67%      | 91.97%       | 0.39    | 0.35     | 96.50%        | 1.22M  |
+| spatial       | 90.87%      | 90.50%       | 0.40    | 0.41     | 96.26%        | 1.22M  |
 
 # TODO
 
