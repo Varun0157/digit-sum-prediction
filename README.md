@@ -177,7 +177,18 @@ Using digital image processing, we apply the following pipeline to each image:
 - Train set: 12,332 successes (51.4%), 4,562 failures, 7,106 skipped (contour issues)
 - Val set: 3,066 successes (51.1%), 1,134 failures, 1,800 skipped
 
-At this stage, we build our preliminary multi-head model and apply iterative self-labelling:
+**Manual Labelling + Fine-tuning:**
+
+The pre-trained MNIST model struggled with our handwriting style. To improve it:
+1. Manually labelled 500 failure cases using a custom GUI tool
+2. Fine-tuned the MNIST classifier on ~51K digit crops (manual labels + pseudo-labels from successes)
+3. Re-classified the failure cases with the fine-tuned model → recovered ~3,400 additional samples
+
+This brought our labelled set from 15,398 to 19,313 samples (64.4% coverage).
+
+**Iterative Self-Labelling:**
+
+At this stage, we build our multi-head model and apply iterative self-labelling:
 
 1. Train on available labelled data
 2. Attempt to classify remaining unlabelled data
