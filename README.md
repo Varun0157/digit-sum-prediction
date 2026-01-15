@@ -191,21 +191,40 @@ Now, we have a digit labelled corpus of samples and their corresponding digits w
 
 Since it is usually adept at feature extraction, we use a ResNet based backbone with some simple dense classification heads.
 
-Immediately, we see a significant boost in performance. With just about a million parameters (half of the best baseline model) we get a test accuracy of about \_\_\_\_.
+Immediately, we see a significant boost in performance. With just about a million parameters (half of the best baseline model) we get a test accuracy of about 92.63%.
 
 ##### Experiments
 
 ###### Deeper and Wider
 
+![Width Comparison](./static/main/width_comparison.png)
+
 ###### Initial Kernel Sizes
 
+![Kernel Comparison](./static/main/kernel_comparison.png)
+
 ###### Regularising Using Total Sum
+
+![Sum Loss Comparison](./static/main/sumloss_comparison.png)
 
 ###### Spatial Attention
 
 ###### Augmentation
 
+![Augmentation Comparison](./static/main/augmentation_comparison.png)
+
 ###### Summary
+
+| Config | Val Sum Acc | Test Sum Acc | Val Digit Acc | Params |
+|--------|-------------|--------------|---------------|--------|
+| **aug** | **94.63%** | **93.63%** | **97.25%** | 1.22M |
+| k5 | 93.40% | 93.07% | 96.92% | 1.22M |
+| w1.50 | 93.33% | 92.93% | 96.93% | 2.96M |
+| sum0.5 | 93.33% | 92.43% | 96.93% | 1.22M |
+| baseline (k7) | 93.07% | 92.63% | 96.87% | 1.22M |
+| sum1.0 | 92.90% | 92.33% | 96.81% | 1.22M |
+| w1.25 | 92.13% | 91.03% | 96.63% | 2.06M |
+| k3 | 91.67% | 91.97% | 96.50% | 1.22M |
 
 # TODO
 
