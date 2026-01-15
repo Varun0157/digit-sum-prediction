@@ -132,6 +132,82 @@ bash eval_all.sh
 
 NOTE: the checkpoints can be found [here](https://drive.google.com/drive/folders/12NJp2T7JPVG_FaXHWO5_D8R8zth-16D6?usp=sharing)
 
+## Main Model
+
+### Hypothesis 1: The Advantages of Multi-Scale Feature Extraction
+
+Based on the experiences from the Baseline model, which saw better performance for Kernel Size 7, but also better performance of kernel size 5 on rare classes, we decided to build a multi-branch CNN that extracts features at multiple scales to combine the advantages of each kernel size.
+
+However, the results were disappointing, with us barely breaking more than 1% over baseline performance.
+
+> > > some results from this model
+
+### Hypothesis 2: Digit Prediction is Easier than Sum Prediction
+
+Prediction of each digit is fundamentally a much simpler task than prediction of the final sum. But, the labels we've been provided only contain the final sum and not the individual digits.
+
+Thus, we aim to extract digit level labels from our samples.
+
+#### Data Extraction
+
+##### Attempt 1: OCR
+
+Using both `tesseractt` and `easyocr` led to underwhelming results. On extracting digits (with and without colour inversion), we could never break about 50% success, where a successful extraction is one where the sum of predicted digits equals the ground truth sum.
+
+Thus, we had to be more creative.
+
+##### Attempt 2: Pre-trained MNIST + self-labelling
+
+Using the magic of digital image processing, we apply the following to each image among our provided samples:
+
+- contour detection
+- within each contour:
+  > > > show initial image
+  - erode the digit
+  - pad with black
+    > > > show final image and MNIST counter-part
+  - classify\*
+- add all of the predictions and compare with the ground truth sum. If the sum is correct, the extraction is assumed to have been successful.
+
+* - we create a simple conv-net and pre-train it on MNIST.
+
+On applying the above pipeline, we were successfully able to extract \_\_\_\_ samples.
+
+At this stage, we build our preliminary model - ResNet feature extraction followed by four classification heads that predict each digit.
+
+We then apply the following pipeline repeatedly to self-label:
+
+- train on available data
+- attempt to classify remaining data
+  - for samples where predicted sum is correct, add to labelled set
+
+After applying the above 7 times, we only had about 250 remaining unlabelled samples. In order to classify these, we manually labelled most of them. The remaining (12) unlabelled samples were quite hard even for me to make sense of, so I left them unlabelled and part of the test set.
+
+> > > add picture of manual labelling GUI
+
+Now, we have a digit labelled corpus of samples and their corresponding digits with decent confidence.
+
+#### Modelling
+
+Since it is usually adept at feature extraction, we use a ResNet based backbone with some simple dense classification heads.
+
+Immediately, we see a significant boost in performance. With just about a million parameters (half of the best baseline model) we get a test accuracy of about \_\_\_\_.
+
+##### Experiments
+
+###### Deeper and Wider
+
+###### Initial Kernel Sizes
+
+###### Regularising Using Total Sum
+
+###### Spatial Attention
+
+###### Augmentation
+
+###### Summary
+
 # TODO
 
+- [ ] clean up and un-gpt
 - [ ] remove test OCR models from uv
