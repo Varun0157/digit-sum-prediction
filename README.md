@@ -158,34 +158,47 @@ Thus, we had to be more creative.
 
 ##### Attempt 2: Pre-trained MNIST + self-labelling
 
-Using the magic of digital image processing, we apply the following to each image among our provided samples:
+Using digital image processing, we apply the following pipeline to each image:
 
-- contour detection
-- within each contour:
-  > > > show initial image
-  - erode the digit
-  - pad with black
-    > > > show final image and MNIST counter-part
-  - classify\*
-- add all of the predictions and compare with the ground truth sum. If the sum is correct, the extraction is assumed to have been successful.
+**Step 1: Contour Detection** - Segment individual digits from the image using OpenCV contour detection.
 
-* - we create a simple conv-net and pre-train it on MNIST.
+![Contour Detection](./static/main/contour_detection.png)
 
-On applying the above pipeline, we were successfully able to extract \_\_\_\_ samples.
+**Step 2: Preprocessing** - For each detected digit:
+- Erode with kernel size 2 (thin the strokes to match MNIST style)
+- Add padding of 4 pixels (center the digit)
+- Resize to 28×28
 
-At this stage, we build our preliminary model - ResNet feature extraction followed by four classification heads that predict each digit.
+![Digit Preprocessing](./static/main/digit_preprocessing.png)
 
-We then apply the following pipeline repeatedly to self-label:
+**Step 3: Classification** - Classify each preprocessed digit using a simple CNN pre-trained on MNIST, then sum the predictions and compare with the ground truth sum. If they match, the extraction is considered successful.
 
-- train on available data
-- attempt to classify remaining data
-  - for samples where predicted sum is correct, add to labelled set
+**Initial Results:**
+- Train set: 12,332 successes (51.4%), 4,562 failures, 7,106 skipped (contour issues)
+- Val set: 3,066 successes (51.1%), 1,134 failures, 1,800 skipped
 
-After applying the above 7 times, we only had about 250 remaining unlabelled samples. In order to classify these, we manually labelled most of them. The remaining (12) unlabelled samples were quite hard even for me to make sense of, so I left them unlabelled and part of the test set.
+At this stage, we build our preliminary multi-head model and apply iterative self-labelling:
 
-> > > add picture of manual labelling GUI
+1. Train on available labelled data
+2. Attempt to classify remaining unlabelled data
+3. For samples where predicted sum matches ground truth, add to labelled set
+4. Repeat
 
-Now, we have a digit labelled corpus of samples and their corresponding digits with decent confidence.
+**Self-Labelling Rounds:**
+
+| Round | Input Samples | Newly Labelled | Remaining |
+|-------|---------------|----------------|-----------|
+| 1 | 10,687 | 8,133 | 2,554 |
+| 2 | 2,554 | 1,669 | 885 |
+| 3 | 885 | 361 | 524 |
+| 4 | 524 | 139 | 385 |
+| 5 | 385 | 70 | 315 |
+| 6 | 315 | 46 | 269 |
+| 7 | 269 | 26 | 243 |
+
+After 7 rounds, ~250 samples remained unlabelled. We manually labelled most of these using a custom GUI tool. The final 14 samples were too ambiguous even for human labelling and were kept as unlabelled test samples.
+
+**Final Dataset:** 29,986 labelled samples (99.95% coverage) with per-digit labels.
 
 #### Modelling
 
