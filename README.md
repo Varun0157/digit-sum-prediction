@@ -234,6 +234,7 @@ Surprisingly, spatial attention underperformed the baseline by ~2%. Global avera
 ###### Augmentation
 
 We applied standard data augmentation techniques to improve generalization:
+
 - **RandomRotation**: ±5° rotation
 - **RandomAffine**: 5% translation
 - **GaussianNoise**: σ=0.02
@@ -243,19 +244,21 @@ We applied standard data augmentation techniques to improve generalization:
 
 ###### Summary
 
-| Config        | Val Sum Acc | Test Sum Acc | Val MAE | Test MAE | Val Digit Acc | Params |
-| ------------- | ----------- | ------------ | ------- | -------- | ------------- | ------ |
-| **aug**       | **94.63%**  | **93.63%**   | **0.25**| **0.28** | **97.25%**    | 1.22M  |
-| k5            | 93.40%      | 93.07%       | 0.32    | 0.31     | 96.92%        | 1.22M  |
-| w1.50         | 93.33%      | 92.93%       | 0.30    | 0.32     | 96.93%        | 2.96M  |
-| sum0.5        | 93.33%      | 92.43%       | 0.29    | 0.30     | 96.93%        | 1.22M  |
-| baseline (k7) | 93.07%      | 92.63%       | 0.31    | 0.32     | 96.87%        | 1.22M  |
-| sum1.0        | 92.90%      | 92.33%       | 0.30    | 0.31     | 96.81%        | 1.22M  |
-| w1.25         | 92.13%      | 91.03%       | 0.36    | 0.41     | 96.63%        | 2.06M  |
-| k3            | 91.67%      | 91.97%       | 0.39    | 0.35     | 96.50%        | 1.22M  |
-| spatial       | 90.87%      | 90.50%       | 0.40    | 0.41     | 96.26%        | 1.22M  |
+| Config        | Val Sum Acc | Test Sum Acc | Val MAE  | Test MAE | Val Digit Acc | Params |
+| ------------- | ----------- | ------------ | -------- | -------- | ------------- | ------ |
+| **aug**       | **94.63%**  | **93.63%**   | **0.25** | **0.28** | **97.25%**    | 1.22M  |
+| k5            | 93.40%      | 93.07%       | 0.32     | 0.31     | 96.92%        | 1.22M  |
+| w1.50         | 93.33%      | 92.93%       | 0.30     | 0.32     | 96.93%        | 2.96M  |
+| sum0.5        | 93.33%      | 92.43%       | 0.29     | 0.30     | 96.93%        | 1.22M  |
+| baseline (k7) | 93.07%      | 92.63%       | 0.31     | 0.32     | 96.87%        | 1.22M  |
+| sum1.0        | 92.90%      | 92.33%       | 0.30     | 0.31     | 96.81%        | 1.22M  |
+| w1.25         | 92.13%      | 91.03%       | 0.36     | 0.41     | 96.63%        | 2.06M  |
+| k3            | 91.67%      | 91.97%       | 0.39     | 0.35     | 96.50%        | 1.22M  |
+| spatial       | 90.87%      | 90.50%       | 0.40     | 0.41     | 96.26%        | 1.22M  |
 
 # TODO
 
+- [ ] push to gh classroom
+- [ ] train on all labelled data
 - [ ] clean up and un-gpt
 - [ ] remove test OCR models from uv
