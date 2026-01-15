@@ -165,6 +165,7 @@ Using digital image processing, we apply the following pipeline to each image:
 ![Contour Detection](./static/main/contour_detection.png)
 
 **Step 2: Preprocessing** - For each detected digit:
+
 - Erode with kernel size 2 (thin the strokes to match MNIST style)
 - Add padding of 4 pixels (center the digit)
 - Resize to 28×28
@@ -174,12 +175,14 @@ Using digital image processing, we apply the following pipeline to each image:
 **Step 3: Classification** - Classify each preprocessed digit using a simple CNN pre-trained on MNIST, then sum the predictions and compare with the ground truth sum. If they match, the extraction is considered successful.
 
 **Initial Results:**
+
 - Train set: 12,332 successes (51.4%), 4,562 failures, 7,106 skipped (contour issues)
 - Val set: 3,066 successes (51.1%), 1,134 failures, 1,800 skipped
 
 **Manual Labelling + Fine-tuning:**
 
 The pre-trained MNIST model struggled with our handwriting style. To improve it:
+
 1. Manually labelled 500 failure cases using a custom GUI tool
 2. Fine-tuned the MNIST classifier on ~51K digit crops (manual labels + pseudo-labels from successes)
 3. Re-classified the failure cases with the fine-tuned model → recovered ~3,400 additional samples
@@ -198,14 +201,14 @@ At this stage, we build our multi-head model and apply iterative self-labelling:
 **Self-Labelling Rounds:**
 
 | Round | Input Samples | Newly Labelled | Remaining |
-|-------|---------------|----------------|-----------|
-| 1 | 10,687 | 8,133 | 2,554 |
-| 2 | 2,554 | 1,669 | 885 |
-| 3 | 885 | 361 | 524 |
-| 4 | 524 | 139 | 385 |
-| 5 | 385 | 70 | 315 |
-| 6 | 315 | 46 | 269 |
-| 7 | 269 | 26 | 243 |
+| ----- | ------------- | -------------- | --------- |
+| 1     | 10,687        | 8,133          | 2,554     |
+| 2     | 2,554         | 1,669          | 885       |
+| 3     | 885           | 361            | 524       |
+| 4     | 524           | 139            | 385       |
+| 5     | 385           | 70             | 315       |
+| 6     | 315           | 46             | 269       |
+| 7     | 269           | 26             | 243       |
 
 After 7 rounds, ~250 samples remained unlabelled. We manually labelled most of these using a custom GUI tool. The final 14 samples were too ambiguous even for human labelling and were kept as unlabelled test samples.
 
@@ -237,7 +240,7 @@ On altering the initial kernel size of the ResNet backbone, we notice:
 
 ![Kernel Comparison](./static/main/kernel_comparison.png)
 
-The small kernel sizes severely under-perform. The kernel size of 5 does slightly better on the val set than that of 7, but slightly under-performs on the test set. Since the performance does not scale much with size, we end our experiments here.
+The small kernel sizes severely under-perform. The kernel size of 5 does slightly better on the val set than that of 7, but slightly under-performs on the test set. Since the performance does not scale much with size, we end our experiments here. This is likely because the image samples are such that larger scale features are more important.
 
 ###### Regularising Using Total Sum
 
@@ -247,13 +250,15 @@ We hypothesized that adding an auxiliary loss term for the total sum might help 
 
 However, as shown above, adding sum regularization (weights 0.5 and 1.0) did not improve performance over the baseline. The individual digit supervision appears sufficient for learning accurate predictions.
 
+Interestingly, there was an improvement in MAE - likely because the model is somewhat encouraged to optimise for the sum as well.
+
 ###### Spatial Attention
 
 We explored whether learned spatial attention could outperform global average pooling. The hypothesis was that different digit positions might benefit from focusing on different spatial regions of the feature maps. We implemented per-head spatial attention that learns to weight spatial locations before classification.
 
 ![Spatial Attention Comparison](./static/main/spatial_comparison.png)
 
-Surprisingly, spatial attention underperformed the baseline by ~2%. Global average pooling's uniform weighting appears to be a better inductive bias for this task, possibly because digits are well-separated and don't require selective attention.
+Surprisingly, spatial attention underperformed the baseline by ~2%. Global average pooling's uniform weighting appears to be a better inductive bias for this task, possibly because digits are not uniformly separated and each head needs to attend to the entire feature.
 
 ###### Augmentation
 
@@ -290,7 +295,7 @@ The test set follows a Gaussian-like distribution centered around sum=17. We def
 
 **Rare vs Common Class Performance**
 
-Analyzing per-class accuracy reveals that some configurations handle class imbalance better than others. Notably, `sum1.0` and `k3` actually perform *better* on rare classes, while `aug` achieves perfect balance with the highest overall accuracy.
+Analyzing per-class accuracy reveals that some configurations handle class imbalance better than others. Notably, `sum1.0` and `k3` actually perform _better_ on rare classes, while `aug` achieves perfect balance with the highest overall accuracy.
 
 ![Rare vs Common Class Performance](./static/main/rare_vs_common.png)
 
@@ -304,5 +309,7 @@ Digit 3 (third position) is consistently the hardest to classify across all conf
 
 - [ ] push to gh classroom
 - [ ] train on all labelled data
+- [ ] train on multi branch
+- [ ] put screen-shot of GUI tool
 - [ ] clean up and un-gpt
 - [ ] remove test OCR models from uv
