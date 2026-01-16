@@ -227,6 +227,16 @@ Since it is usually adept at feature extraction, we use a ResNet based backbone 
 
 Immediately, we see a significant boost in performance. With just about a million parameters (half of the best baseline model) we get a test accuracy of about 92.63%.
 
+##### Usage
+
+```bash
+# Train
+uv run python -m src.train_multihead --data_dir data/multi --epochs 100 --lr 1e-3 --batch_size 128 --dropout 0.3 --augment
+
+# Test
+uv run python -m src.test_multihead --checkpoint checkpoints/multihead_resnet_best.pth --data_dir data/multi/test
+```
+
 ##### Experiments
 
 | Train Loss                                       | Validation Loss                              | Validation Accuracy                            |
