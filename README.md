@@ -318,10 +318,6 @@ Based on ablation results, we selected the augmented configuration and trained o
 | Val MAE      | 0.24   |
 | Parameters   | 1.22M  |
 
-**Confusion Matrix**
-
-![Final Model Confusion Matrix](./static/main/final_confusion_matrix.png)
-
 # TODO
 
 - [x] push to gh classroom
