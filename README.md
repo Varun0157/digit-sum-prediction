@@ -330,6 +330,7 @@ Note that the checkpoints can be found [here](https://drive.google.com/drive/fol
 
 ##### Future Scope
 
+- [ ] consider some interpretability visuals - visualise feature map from backbone
 - [ ] attempt better augmentation - only one attempt was made and it performed very well
 - [ ] generate more data (perhaps using diffusion and conditioning on the digits?)
 
