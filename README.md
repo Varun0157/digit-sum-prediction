@@ -4,6 +4,8 @@
 
 ![Sample images](./static/baseline/sample_images.png)
 
+The samples are the images themselves and the only label available is the total sum.
+
 Some exploratory data analysis can be found [here](./data/analysis/).
 
 ## Baseline
@@ -140,9 +142,11 @@ Based on the experiences from the Baseline model, which saw better performance f
 
 However, the results were disappointing, with us barely breaking more than 1% over baseline performance.
 
-> > > some results from this model
+This model can be explored in `./src/multibranch.py`.
 
 ### Hypothesis 2: Digit Prediction is Easier than Sum Prediction
+
+**Assumption**: We have exactly 4 digits in each image.
 
 Prediction of each digit is fundamentally a much simpler task than prediction of the final sum. But, the labels we've been provided only contain the final sum and not the individual digits.
 
@@ -181,7 +185,7 @@ Using digital image processing, we apply the following pipeline to each image:
 
 **Manual Labelling + Fine-tuning:**
 
-The pre-trained MNIST model struggled with our handwriting style. To improve it:
+In order to help the convnet pre-trained on MNIST, we did the following:
 
 1. Manually labelled 500 failure cases using a custom GUI tool
 
@@ -321,6 +325,13 @@ Based on ablation results, we selected the augmented configuration and trained o
 | Val Accuracy | 95.43% |
 | Val MAE      | 0.24   |
 | Parameters   | 1.22M  |
+
+Note that the checkpoints can be found [here](https://drive.google.com/drive/folders/1NKSWVLkwbzxLCrP4y0pgiZPq4Vu7hOht?usp=sharing).
+
+##### Future Scope
+
+- [ ] attempt better augmentation - only one attempt was made and it performed very well
+- [ ] generate more data (perhaps using diffusion and conditioning on the digits?)
 
 # TODO
 
