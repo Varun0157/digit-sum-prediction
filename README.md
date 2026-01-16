@@ -219,7 +219,7 @@ At this stage, we build our multi-head model and apply iterative self-labelling:
 
 After 7 rounds, ~250 samples remained unlabelled. We manually labelled most of these using a custom GUI tool. The final 14 samples were too ambiguous even for human labelling and were kept as unlabelled test samples.
 
-**Final Dataset:** 29,986 labelled samples (99.95% coverage) with per-digit labels.
+**Final Dataset:** 29,986 labelled samples (99.95% coverage) with per-digit labels. The final split dataset can be found [here](https://drive.google.com/drive/folders/1Gkdej0sLzbHOqgkk02SyBBwv7mdHybCs?usp=sharing).
 
 #### Modelling
 
