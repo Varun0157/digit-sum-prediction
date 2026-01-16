@@ -184,6 +184,9 @@ Using digital image processing, we apply the following pipeline to each image:
 The pre-trained MNIST model struggled with our handwriting style. To improve it:
 
 1. Manually labelled 500 failure cases using a custom GUI tool
+
+   ![Manual Labelling GUI](./static/main/labeller.png)
+
 2. Fine-tuned the MNIST classifier on ~51K digit crops (manual labels + pseudo-labels from successes)
 3. Re-classified the failure cases with the fine-tuned model → recovered ~3,400 additional samples
 
@@ -307,9 +310,8 @@ Digit 3 (third position) is consistently the hardest to classify across all conf
 
 # TODO
 
-- [ ] push to gh classroom
+- [x] push to gh classroom
+- [x] put screen-shot of GUI tool
 - [ ] train on all labelled data
-- [ ] train on multi branch
-- [ ] put screen-shot of GUI tool
 - [ ] clean up and un-gpt
 - [ ] remove test OCR models from uv

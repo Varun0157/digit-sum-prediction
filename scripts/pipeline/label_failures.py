@@ -3,7 +3,7 @@ Label the failed cases identified by extract_failures.py
 """
 
 import sys
-sys.path.append('scripts')
+sys.path.append('scripts/pipeline')
 
 import numpy as np
 import json

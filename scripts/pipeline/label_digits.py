@@ -4,7 +4,7 @@ Shows image, you type the 4 digits, saves labels.
 """
 
 import sys
-sys.path.append('scripts')
+sys.path.append('scripts/experiments')
 
 import numpy as np
 import cv2
