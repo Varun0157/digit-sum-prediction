@@ -312,6 +312,13 @@ Digit 3 (third position) is consistently the hardest to classify across all conf
 
 - [x] push to gh classroom
 - [x] put screen-shot of GUI tool
-- [ ] train on all labelled data
+- [x] train on all labelled data
+- [x] update inference.py script
 - [ ] clean up and un-gpt
+  - [ ] move all models to models/
+  - [ ] make loops completely generic instead of separate train and test scripts for each new variant
 - [ ] remove test OCR models from uv
+
+# NOTE
+
+LLMs (mostly Claude Sonnet 4.5) were used extensively for the `main` section of the experiment in particular for quick scripting with the tight deadline. This led to a decrease in the general quality of the code during this section. This should be resolved before the code is made public.

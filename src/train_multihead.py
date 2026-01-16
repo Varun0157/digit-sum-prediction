@@ -267,6 +267,7 @@ def main():
     parser.add_argument('--kernel_size', type=int, default=7, choices=[3, 5, 7], help='Initial conv kernel size (default: 7)')
     parser.add_argument('--sum_loss_weight', type=float, default=0.0, help='Weight for differentiable sum loss (default: 0.0, disabled)')
     parser.add_argument('--patience', type=int, default=0, help='Early stopping patience (0=disabled). Stops if neither val loss nor val acc improves for this many epochs.')
+    parser.add_argument('--suffix', type=str, default='', help='Custom suffix for checkpoint name (e.g., "full")')
     parser.add_argument('--data_dir', type=str, default='data/multi', help='Data directory')
     parser.add_argument('--checkpoint_dir', type=str, default='checkpoints', help='Checkpoint directory')
     parser.add_argument('--wandb_project', type=str, default='digit-sum-prediction', help='W&B project name')
@@ -286,6 +287,8 @@ def main():
         name_suffix.append(f'sum{args.sum_loss_weight}'.replace('.', ''))
     if args.augment:
         name_suffix.append('aug')
+    if args.suffix:
+        name_suffix.append(args.suffix)
     run_name = 'MultiHeadResNet' + ('_' + '_'.join(name_suffix) if name_suffix else '')
 
     # Initialize wandb
@@ -397,6 +400,8 @@ def main():
                 checkpoint_name += f'_sum{args.sum_loss_weight}'.replace('.', '')
             if args.augment:
                 checkpoint_name += '_aug'
+            if args.suffix:
+                checkpoint_name += f'_{args.suffix}'
             checkpoint_name += '.pth'
             checkpoint_path = f'{args.checkpoint_dir}/{checkpoint_name}'
             torch.save(model.state_dict(), checkpoint_path)
@@ -424,6 +429,8 @@ def main():
         checkpoint_name += f'_sum{args.sum_loss_weight}'.replace('.', '')
     if args.augment:
         checkpoint_name += '_aug'
+    if args.suffix:
+        checkpoint_name += f'_{args.suffix}'
     checkpoint_name += '.pth'
     print(f"Model saved to: {args.checkpoint_dir}/{checkpoint_name}")
 
