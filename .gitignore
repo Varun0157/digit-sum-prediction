@@ -1,5 +1,6 @@
 **/__pycache__
 checkpoints/*
+!checkpoints/multihead_resnet_best_aug_full.pth
 data/*
 **/wandb
 

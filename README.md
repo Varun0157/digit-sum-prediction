@@ -225,6 +225,10 @@ Immediately, we see a significant boost in performance. With just about a millio
 
 ##### Experiments
 
+| Train Loss                                       | Validation Loss                              | Validation Accuracy                            |
+| ------------------------------------------------ | -------------------------------------------- | ---------------------------------------------- |
+| ![Train Loss](./static/main/train-loss-main.png) | ![Val Loss](./static/main/val-loss-main.png) | ![Val Acc](./static/main/val-sum-acc-main.png) |
+
 ###### Deeper and Wider
 
 We add a "width multiplier" that essentially:
