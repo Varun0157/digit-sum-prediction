@@ -308,6 +308,20 @@ Digit 3 (third position) is consistently the hardest to classify across all conf
 
 ![Per-Digit Position Accuracy](./static/main/per_digit_accuracy.png)
 
+##### Final Model
+
+Based on ablation results, we selected the augmented configuration and trained on 90% of all labelled data (26,987 samples) with 10% held out for validation (2,999 samples).
+
+| Metric       | Value  |
+| ------------ | ------ |
+| Val Accuracy | 95.43% |
+| Val MAE      | 0.24   |
+| Parameters   | 1.22M  |
+
+**Confusion Matrix**
+
+![Final Model Confusion Matrix](./static/main/final_confusion_matrix.png)
+
 # TODO
 
 - [x] push to gh classroom
