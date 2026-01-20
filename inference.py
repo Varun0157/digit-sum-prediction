@@ -70,11 +70,39 @@ def predict(x):
     return sum_preds.cpu().numpy()
 
 
+def evaluate(data_dir: str = "data/test", batch_size: int = 128):
+    """
+    Evaluate model on test set.
+
+    Args:
+        data_dir: path to directory containing data*.npy and label*.npy files
+        batch_size: batch size for inference
+    """
+    from glob import glob
+
+    data_files = sorted(glob(f"{data_dir}/data*.npy"))
+    label_files = sorted(glob(f"{data_dir}/label*.npy"))
+
+    all_samples = np.concatenate([np.load(f) for f in data_files])
+    all_labels = np.concatenate([np.load(f) for f in label_files])
+
+    print(f"Loaded {len(all_samples)} samples from {data_dir}")
+
+    all_preds = []
+    for i in range(0, len(all_samples), batch_size):
+        batch = all_samples[i : i + batch_size]
+        preds = predict(batch)
+        all_preds.append(preds)
+
+    all_preds = np.concatenate(all_preds)
+    accuracy = (all_preds == all_labels).mean()
+    mae = np.abs(all_preds - all_labels).mean()
+
+    print(f"Accuracy: {accuracy * 100:.2f}%")
+    print(f"MAE: {mae:.3f}")
+
+    return accuracy, mae
+
+
 if __name__ == "__main__":
-    # Quick test
-    print("\nTesting inference...")
-    dummy_input = np.random.randint(0, 256, (4, 40, 168), dtype=np.uint8)
-    preds = predict(dummy_input)
-    print(f"Input shape: {dummy_input.shape}")
-    print(f"Predictions: {preds}")
-    print(f"Predictions shape: {preds.shape}")
+    evaluate()
