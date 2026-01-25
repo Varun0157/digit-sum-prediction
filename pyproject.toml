@@ -5,10 +5,8 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "easyocr>=1.7.2",
     "matplotlib>=3.10.8",
     "numpy>=2.4.0",
-    "pytesseract>=0.3.13",
     "scikit-learn>=1.8.0",
     "seaborn>=0.13.2",
     "torch>=2.9.1",

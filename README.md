@@ -8,6 +8,15 @@ The samples are the images themselves and the only label available is the total 
 
 Some exploratory data analysis can be found [here](./data/analysis/).
 
+## Summary
+
+|          | Baseline                                                  | Main                                                                                   |
+| -------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Model    | SimpleCNN (direct sum prediction using LeNet-style model) | MultiHeadResNet (per-digit prediction using 4 classification heads on ResNet backbone) |
+| Accuracy | 53.00%                                                    | 94.80%                                                                                 |
+| MAE      | 0.672                                                     | 0.193                                                                                  |
+| Params   | 2.5M                                                      | 1.2M                                                                                   |
+
 ## Baseline
 
 ### Results
@@ -350,10 +359,10 @@ Note that the checkpoints can be found [here](https://drive.google.com/drive/fol
 - [x] put screen-shot of GUI tool
 - [x] train on all labelled data
 - [x] update inference.py script
-- [ ] clean up and un-gpt
-  - [ ] move all models to models/
-  - [ ] make loops completely generic instead of separate train and test scripts for each new variant
-- [ ] remove test OCR models from uv
+- [x] clean up and un-gpt
+  - [x] move all models to models/
+  - [x] make loops completely generic instead of separate train and test scripts for each new variant
+- [x] remove test OCR models from uv
 
 # NOTE
 
