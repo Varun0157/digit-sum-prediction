@@ -207,7 +207,7 @@ Using digital image processing, we apply the following pipeline to each image:
 
 In order to help the convnet pre-trained on MNIST, we did the following:
 
-1. Manually labelled 500 failure cases using a custom GUI tool
+1. Manually labelled 100 failure cases using a custom GUI tool
 
    ![Manual Labelling GUI](./static/main/labeller.png)
 
@@ -237,7 +237,7 @@ At this stage, we build our multi-head model and apply iterative self-labelling:
 | 6     | 315           | 46             | 269       |
 | 7     | 269           | 26             | 243       |
 
-After 7 rounds, ~250 samples remained unlabelled. We manually labelled most of these using a custom GUI tool. The final 14 samples were too ambiguous even for human labelling and were kept as unlabelled test samples.
+After 7 rounds, ~250 samples remained unlabelled. We manually labelled most of these using our custom GUI tool. The final 14 samples were too ambiguous even for human labelling and were kept as unlabelled test samples.
 
 **Final Dataset:** 29,986 labelled samples (99.95% coverage) with per-digit labels.
 
@@ -380,4 +380,4 @@ Note that the checkpoints can be found [here](https://drive.google.com/drive/fol
 
 The required data can be found [here](https://drive.google.com/drive/folders/17Mmg17G9DLVYr33BWFyccp7od5hMP7sT?usp=sharing), including the initial raw data, the labelled data, and the final test data.
 
-LLMs (mostly Claude Sonnet 4.5) were used extensively for the `main` section of the experiment in particular for quick scripting with the tight deadline. This led to a decrease in the general quality of the code during this section.
+LLMs (mostly Claude Sonnet 4.5) were used extensively for the `main` section of the experiment in particular for quick scripting with the tight deadline. This led to a decrease in the general quality of the code (particularly in `scripts/` during this section.
