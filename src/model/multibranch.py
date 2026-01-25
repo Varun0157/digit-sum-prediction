@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from .base import BaseModel, Labels
+
 
 class ConvBranch(nn.Module):
     """
@@ -40,7 +42,7 @@ class ConvBranch(nn.Module):
         return x
 
 
-class MultiBranchCNN(nn.Module):
+class MultiBranchCNN(BaseModel):
     """
     Multi-branch CNN that processes input through multiple parallel branches
     with different kernel sizes, then merges features via concatenation.
@@ -86,3 +88,15 @@ class MultiBranchCNN(nn.Module):
         x = self.dropout(x)
         x = self.fc2(x)  # Nx512 -> Nx37
         return x
+
+    def apply_criterion(
+        self,
+        logits: torch.Tensor,
+        labels: Labels,
+        criterion: nn.Module,
+    ) -> torch.Tensor:
+        assert "sum" in labels, "MultiBranchCNN requires 'sum' labels"
+        return criterion(logits, labels["sum"])
+
+    def get_sum(self, logits: torch.Tensor) -> torch.Tensor:
+        return logits.argmax(dim=1)

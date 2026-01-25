@@ -2,8 +2,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from .base import BaseModel, Labels
 
-class SimpleCNN(nn.Module):
+
+class SimpleCNN(BaseModel):
     """
     Simple baseline CNN for digit sum prediction.
     ref: https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html
@@ -45,6 +47,18 @@ class SimpleCNN(nn.Module):
         x = F.relu(self.fc1(x))  # Nx2560 -> Nx256
         x = self.fc2(x)  # Nx256 -> Nx37
         return x
+
+    def apply_criterion(
+        self,
+        logits: torch.Tensor,
+        labels: Labels,
+        criterion: nn.Module,
+    ) -> torch.Tensor:
+        assert "sum" in labels, "SimpleCNN requires 'sum' labels"
+        return criterion(logits, labels["sum"])
+
+    def get_sum(self, logits: torch.Tensor) -> torch.Tensor:
+        return logits.argmax(dim=1)
 
 
 class SimpleMNIST(nn.Module):

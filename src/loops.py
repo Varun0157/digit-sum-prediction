@@ -12,6 +12,9 @@ from sklearn.metrics import confusion_matrix, mean_absolute_error
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+from src.data.loader import Batch
+from src.model.base import BaseModel
+
 
 class EarlyStopping:
     def __init__(self, patience: int = 20) -> None:
@@ -47,88 +50,22 @@ class EarlyStopping:
         return not recent_improved
 
 
-def _get_loss_criterion(weights: torch.Tensor | None = None) -> nn.CrossEntropyLoss:
-    return nn.CrossEntropyLoss(weight=weights, reduction="sum")
-
-
-def _calculate_accuracy(
-    model: nn.Module, dataloader: DataLoader, device: torch.device
-) -> float:
-    model.eval()
-
-    correct = 0
-    total = 0
-
-    with torch.no_grad():
-        for images, labels in tqdm(dataloader, desc="calculating accuracy"):
-            images, labels = images.to(device), labels.to(device)
-            outputs = model(images)
-            _, predicted = torch.max(outputs.data, 1)
-
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-
-    accuracy = correct / total
-    return accuracy
-
-
-def _get_predictions(
-    model: nn.Module, dataloader: DataLoader, device: torch.device
-) -> tuple[list[int], list[int]]:
-    model.eval()
-
-    all_predictions = []
-    all_labels = []
-
-    with torch.no_grad():
-        for images, labels in tqdm(dataloader, desc="collecting predictions"):
-            images, labels = images.to(device), labels.to(device)
-            outputs = model(images)
-            _, predicted = torch.max(outputs.data, 1)
-
-            all_predictions.extend(predicted.cpu().numpy().tolist())
-            all_labels.extend(labels.cpu().numpy().tolist())
-
-    return all_predictions, all_labels
-
-
-def _test_epoch(
-    model: nn.Module,
-    dataloader: DataLoader,
-    criterion: nn.Module,
-    device: torch.device,
-) -> float:
-    model.eval()
-    test_loss = 0.0
-
-    with torch.no_grad():
-        for images, labels in tqdm(dataloader, desc="testing"):
-            images, labels = images.to(device), labels.to(device)
-
-            outputs = model(images)
-            loss = criterion(outputs, labels)
-
-            test_loss += loss.item()
-
-    num_samples = len(dataloader.dataset)
-    return test_loss / num_samples
-
-
 def _train_epoch(
-    model: nn.Module,
+    model: BaseModel,
     optimizer: torch.optim.Optimizer,
-    dataloader: DataLoader,
+    dataloader: DataLoader[Batch],
     criterion: nn.Module,
     device: torch.device,
 ) -> float:
     model.train()
     train_loss = 0.0
 
-    for images, labels in tqdm(dataloader, desc="training"):
-        images, labels = images.to(device), labels.to(device)
-        outputs = model(images)
+    for batch in tqdm(dataloader, desc="training"):
+        images = batch["image"].to(device)
+        labels = {k: v.to(device) for k, v in batch["labels"].items()}
 
-        loss = criterion(outputs, labels)
+        logits = model(images)
+        loss = model.apply_criterion(logits, labels, criterion)
 
         optimizer.zero_grad()
         loss.backward()
@@ -140,10 +77,48 @@ def _train_epoch(
     return train_loss / num_samples
 
 
+def _eval_epoch(
+    model: BaseModel,
+    dataloader: DataLoader[Batch],
+    criterion: nn.Module,
+    device: torch.device,
+) -> tuple[float, float, list[int], list[int]]:
+    """Evaluate model, returning loss, accuracy, predictions, and labels."""
+    model.eval()
+    total_loss = 0.0
+    correct = 0
+    total = 0
+    all_preds: list[int] = []
+    all_labels: list[int] = []
+
+    with torch.no_grad():
+        for batch in tqdm(dataloader, desc="evaluating"):
+            images = batch["image"].to(device)
+            labels = {k: v.to(device) for k, v in batch["labels"].items()}
+
+            logits = model(images)
+            loss = model.apply_criterion(logits, labels, criterion)
+            total_loss += loss.item()
+
+            preds = model.get_sum(logits)
+            sum_labels = labels["sum"]
+
+            correct += (preds == sum_labels).sum().item()
+            total += sum_labels.size(0)
+
+            all_preds.extend(preds.cpu().numpy().tolist())
+            all_labels.extend(sum_labels.cpu().numpy().tolist())
+
+    num_samples = len(dataloader.dataset)
+    avg_loss = total_loss / num_samples
+    accuracy = correct / total
+    return avg_loss, accuracy, all_preds, all_labels
+
+
 def train_model(
-    model: nn.Module,
-    train_dataloader: DataLoader,
-    val_dataloader: DataLoader,
+    model: BaseModel,
+    train_dataloader: DataLoader[Batch],
+    val_dataloader: DataLoader[Batch],
     num_epochs: int,
     lr: float,
     device: torch.device,
@@ -159,7 +134,7 @@ def train_model(
 
     if class_weights is not None:
         class_weights = class_weights.to(device)
-    criterion = _get_loss_criterion(class_weights)
+    criterion = nn.CrossEntropyLoss(weight=class_weights, reduction="sum")
 
     early_stopping = EarlyStopping(patience=patience)
 
@@ -167,8 +142,7 @@ def train_model(
         start_time = time.time()
 
         train_loss = _train_epoch(model, optimizer, train_dataloader, criterion, device)
-        val_loss = _test_epoch(model, val_dataloader, criterion, device)
-        accuracy = _calculate_accuracy(model, val_dataloader, device)
+        val_loss, accuracy, _, _ = _eval_epoch(model, val_dataloader, criterion, device)
 
         wandb.log(
             {"train/loss": train_loss, "val/loss": val_loss, "val/accuracy": accuracy}
@@ -182,9 +156,9 @@ def train_model(
 
         time_taken = time.time() - start_time
         print(
-            f"epoch {epoch + 1}/{num_epochs} : train Loss: {train_loss:.4f}"
-            + f" - val loss: {val_loss:.4f} val accuracy: {accuracy:.4f} "
-            + f"-- time: {time_taken:.2f}s save_model: {save_model}"
+            f"epoch {epoch + 1}/{num_epochs} : train loss: {train_loss:.4f}"
+            f" - val loss: {val_loss:.4f} val accuracy: {accuracy:.4f}"
+            f" -- time: {time_taken:.2f}s save_model: {save_model}"
         )
 
         if early_stopping.should_stop():
@@ -193,8 +167,8 @@ def train_model(
 
 
 def test_model(
-    model: nn.Module,
-    test_dataloader: DataLoader,
+    model: BaseModel,
+    test_dataloader: DataLoader[Batch],
     device: torch.device,
     model_name: str,
     class_weights: torch.Tensor | None = None,
@@ -204,17 +178,15 @@ def test_model(
 
     if class_weights is not None:
         class_weights = class_weights.to(device)
-    criterion = _get_loss_criterion(class_weights)
+    criterion = nn.CrossEntropyLoss(weight=class_weights, reduction="sum")
 
     start_time = time.time()
 
-    test_loss = _test_epoch(model, test_dataloader, criterion, device)
-    accuracy = _calculate_accuracy(model, test_dataloader, device)
-    predictions, labels = _get_predictions(model, test_dataloader, device)
-
+    test_loss, accuracy, predictions, labels = _eval_epoch(
+        model, test_dataloader, criterion, device
+    )
     mae = mean_absolute_error(labels, predictions)
 
-    # Get number of classes from predictions/labels range
     num_classes = max(max(labels), max(predictions)) + 1
     cm = confusion_matrix(labels, predictions, labels=range(num_classes))
 
@@ -257,8 +229,8 @@ def test_model(
     time_taken = time.time() - start_time
     print(
         f"test results: test loss: {test_loss:.4f}"
-        + f" - test accuracy: {accuracy:.4f}"
-        + f" - MAE: {mae:.4f}"
-        + f" -- time: {time_taken:.2f}s"
+        f" - test accuracy: {accuracy:.4f}"
+        f" - MAE: {mae:.4f}"
+        f" -- time: {time_taken:.2f}s"
     )
     print(f"Results saved to: {model_results_dir}")

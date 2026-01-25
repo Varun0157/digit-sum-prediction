@@ -1,3 +1,3 @@
-from .loader import get_dataloader
+from .loader import Batch, DigitSumDataset, get_dataloader
 
-__all__ = ["get_dataloader"]
+__all__ = ["Batch", "DigitSumDataset", "get_dataloader"]

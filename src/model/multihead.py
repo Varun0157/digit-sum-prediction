@@ -12,12 +12,14 @@ Variants:
 - large: 40→80→160→320 channels, 320→128→10 heads (~2M params)
 
 Input: Nx1x40x168
-Output: 4 heads, each Nx10 (logits for digits 0-9)
+Output: Nx4x10 (logits for each digit position)
 """
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+from .base import BaseModel, Labels
 
 
 class ResidualBlock(nn.Module):
@@ -32,21 +34,29 @@ class ResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1):
         super().__init__()
 
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3,
-                               stride=stride, padding=1, bias=False)
+        self.conv1 = nn.Conv2d(
+            in_channels,
+            out_channels,
+            kernel_size=3,
+            stride=stride,
+            padding=1,
+            bias=False,
+        )
         self.bn1 = nn.BatchNorm2d(out_channels)
 
-        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3,
-                               stride=1, padding=1, bias=False)
+        self.conv2 = nn.Conv2d(
+            out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False
+        )
         self.bn2 = nn.BatchNorm2d(out_channels)
 
         # Shortcut connection (1x1 conv if dimensions change)
         self.shortcut = nn.Sequential()
         if stride != 1 or in_channels != out_channels:
             self.shortcut = nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, kernel_size=1,
-                         stride=stride, bias=False),
-                nn.BatchNorm2d(out_channels)
+                nn.Conv2d(
+                    in_channels, out_channels, kernel_size=1, stride=stride, bias=False
+                ),
+                nn.BatchNorm2d(out_channels),
             )
 
     def forward(self, x):
@@ -60,19 +70,27 @@ class ResidualBlock(nn.Module):
         return out
 
 
-class MultiHeadResNet(nn.Module):
+class MultiHeadResNet(BaseModel):
     """
     ResNet-inspired multi-head model for digit prediction.
 
     Backbone extracts shared features, then 4 heads predict each digit.
     """
 
-    def __init__(self, num_digits=4, dropout=0.3, width_multiplier=1.0, kernel_size=7):
+    def __init__(
+        self,
+        num_digits: int = 4,
+        dropout: float = 0.3,
+        width_multiplier: float = 1.0,
+        kernel_size: int = 7,
+        sum_loss_weight: float = 0.0,
+    ):
         super().__init__()
 
         self.num_digits = num_digits
         self.width_multiplier = width_multiplier
         self.kernel_size = kernel_size
+        self.sum_loss_weight = sum_loss_weight
 
         # Calculate channel dimensions based on width multiplier
         base_channels = [32, 64, 128, 256]
@@ -81,14 +99,16 @@ class MultiHeadResNet(nn.Module):
 
         # Initial convolution (kernel_size configurable for ablation)
         padding = kernel_size // 2  # same padding
-        self.conv1 = nn.Conv2d(1, c1, kernel_size=kernel_size, stride=2, padding=padding, bias=False)
+        self.conv1 = nn.Conv2d(
+            1, c1, kernel_size=kernel_size, stride=2, padding=padding, bias=False
+        )
         self.bn1 = nn.BatchNorm2d(c1)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
         # Residual blocks
-        self.layer1 = ResidualBlock(c1, c2, stride=1)    # c1→c2
-        self.layer2 = ResidualBlock(c2, c3, stride=2)    # c2→c3
-        self.layer3 = ResidualBlock(c3, c4, stride=2)    # c3→c4
+        self.layer1 = ResidualBlock(c1, c2, stride=1)  # c1→c2
+        self.layer2 = ResidualBlock(c2, c3, stride=2)  # c2→c3
+        self.layer3 = ResidualBlock(c3, c4, stride=2)  # c3→c4
 
         # Global average pooling
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
@@ -100,20 +120,21 @@ class MultiHeadResNet(nn.Module):
         # For larger models, use 2-layer heads
         if width_multiplier > 1.0:
             hidden_dim = int(c4 * 0.4)  # 320 -> 128 for width_multiplier=1.25
-            self.heads = nn.ModuleList([
-                nn.Sequential(
-                    nn.Linear(c4, hidden_dim),
-                    nn.ReLU(),
-                    nn.Dropout(dropout * 0.5),
-                    nn.Linear(hidden_dim, 10)
-                ) for _ in range(num_digits)
-            ])
+            self.heads = nn.ModuleList(
+                [
+                    nn.Sequential(
+                        nn.Linear(c4, hidden_dim),
+                        nn.ReLU(),
+                        nn.Dropout(dropout * 0.5),
+                        nn.Linear(hidden_dim, 10),
+                    )
+                    for _ in range(num_digits)
+                ]
+            )
         else:
-            self.heads = nn.ModuleList([
-                nn.Linear(c4, 10) for _ in range(num_digits)
-            ])
+            self.heads = nn.ModuleList([nn.Linear(c4, 10) for _ in range(num_digits)])
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         # Backbone
         x = F.relu(self.bn1(self.conv1(x)))
         x = self.maxpool(x)
@@ -129,13 +150,45 @@ class MultiHeadResNet(nn.Module):
         # Apply dropout
         x = self.dropout(x)
 
-        # Multi-head prediction
-        outputs = [head(x) for head in self.heads]
+        # Multi-head prediction, stacked into (N, 4, 10)
+        outputs = torch.stack([head(x) for head in self.heads], dim=1)
+        return outputs
 
-        return outputs  # Returns list of 4 tensors, each Nx10
+    def apply_criterion(
+        self,
+        logits: torch.Tensor,
+        labels: Labels,
+        criterion: nn.Module,
+    ) -> torch.Tensor:
+        assert "digits" in labels, "MultiHeadResNet requires 'digits' labels"
+        digits = labels["digits"]
+
+        # Per-digit cross entropy loss
+        loss = sum(
+            criterion(logits[:, i], digits[:, i]) for i in range(self.num_digits)
+        )
+
+        # Optional sum regularization
+        if self.sum_loss_weight > 0.0:
+            assert "sum" in labels, "Sum regularization requires 'sum' labels"
+            # Differentiable expected sum
+            digit_range = torch.arange(10, device=logits.device, dtype=torch.float)
+            expected_sum = sum(
+                (F.softmax(logits[:, i], dim=1) * digit_range).sum(dim=1)
+                for i in range(self.num_digits)
+            )
+            sum_loss = F.mse_loss(expected_sum, labels["sum"].float())
+            loss = loss + self.sum_loss_weight * sum_loss
+
+        return loss
+
+    def get_sum(self, logits: torch.Tensor) -> torch.Tensor:
+        # logits: (N, 4, 10)
+        digit_preds = logits.argmax(dim=2)  # (N, 4)
+        return digit_preds.sum(dim=1)  # (N,)
 
 
-class MultiHeadSpatialAttention(nn.Module):
+class MultiHeadSpatialAttention(BaseModel):
     """
     Multi-head model with per-head spatial attention.
 
@@ -143,7 +196,7 @@ class MultiHeadSpatialAttention(nn.Module):
     replacing global average pooling with learned attention-weighted pooling.
     """
 
-    def __init__(self, num_digits=4, dropout=0.3):
+    def __init__(self, num_digits: int = 4, dropout: float = 0.3):
         super().__init__()
 
         self.num_digits = num_digits
@@ -160,22 +213,23 @@ class MultiHeadSpatialAttention(nn.Module):
         self.layer3 = ResidualBlock(c3, c4, stride=2)
 
         # Per-head spatial attention
-        self.spatial_attention = nn.ModuleList([
-            nn.Sequential(
-                nn.Conv2d(c4, c4 // 4, kernel_size=1),
-                nn.ReLU(),
-                nn.Conv2d(c4 // 4, 1, kernel_size=1)
-            ) for _ in range(num_digits)
-        ])
+        self.spatial_attention = nn.ModuleList(
+            [
+                nn.Sequential(
+                    nn.Conv2d(c4, c4 // 4, kernel_size=1),
+                    nn.ReLU(),
+                    nn.Conv2d(c4 // 4, 1, kernel_size=1),
+                )
+                for _ in range(num_digits)
+            ]
+        )
 
         self.dropout = nn.Dropout(dropout)
 
         # Classification heads
-        self.heads = nn.ModuleList([
-            nn.Linear(c4, 10) for _ in range(num_digits)
-        ])
+        self.heads = nn.ModuleList([nn.Linear(c4, 10) for _ in range(num_digits)])
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         # Backbone
         x = F.relu(self.bn1(self.conv1(x)))
         x = self.maxpool(x)
@@ -198,4 +252,20 @@ class MultiHeadSpatialAttention(nn.Module):
             pooled = self.dropout(pooled)
             outputs.append(head(pooled))
 
-        return outputs
+        return torch.stack(outputs, dim=1)  # (N, 4, 10)
+
+    def apply_criterion(
+        self,
+        logits: torch.Tensor,
+        labels: Labels,
+        criterion: nn.Module,
+    ) -> torch.Tensor:
+        assert "digits" in labels, "MultiHeadSpatialAttention requires 'digits' labels"
+        digits = labels["digits"]
+        return sum(
+            criterion(logits[:, i], digits[:, i]) for i in range(self.num_digits)
+        )
+
+    def get_sum(self, logits: torch.Tensor) -> torch.Tensor:
+        digit_preds = logits.argmax(dim=2)  # (N, 4)
+        return digit_preds.sum(dim=1)  # (N,)

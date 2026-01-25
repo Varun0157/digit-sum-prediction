@@ -1,34 +1,32 @@
 import os
 
 import torch
-import torch.nn as nn
 import wandb
 from torch.utils.data import DataLoader
 
+from src.data.loader import Batch
 from src.loops import train_model
+from src.model.base import BaseModel
 
 
 def run_model(
-    model: nn.Module,
+    model: BaseModel,
     model_name: str,
     config: dict,
-    train_loader: DataLoader,
-    val_loader: DataLoader,
-    class_weights: torch.Tensor,
+    train_loader: DataLoader[Batch],
+    val_loader: DataLoader[Batch],
+    class_weights: torch.Tensor | None = None,
     ckpt_dir: str = "checkpoints",
+    patience: int = 10,
 ) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
     model = model.to(device)
-    if class_weights is not None:
-        class_weights = class_weights.to(device)
 
     print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
 
-    if not os.path.exists(ckpt_dir):
-        os.makedirs(ckpt_dir)
-
+    os.makedirs(ckpt_dir, exist_ok=True)
     ckpt_path = os.path.join(ckpt_dir, model_name + ".pth")
 
     run = wandb.init(
@@ -46,6 +44,7 @@ def run_model(
         device=device,
         ckpt_path=ckpt_path,
         class_weights=class_weights,
+        patience=patience,
     )
 
     run.finish()
