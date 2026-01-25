@@ -4,7 +4,7 @@
 
 ![Sample images](./static/baseline/sample_images.png)
 
-The samples are the images themselves and the only label available is the total sum.
+The samples are the images themselves and the **only label available is the total sum.**
 
 Some exploratory data analysis can be found [here](./data/analysis/).
 
@@ -13,9 +13,9 @@ Some exploratory data analysis can be found [here](./data/analysis/).
 |          | Baseline                                                  | Main                                                                                   |
 | -------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | Model    | SimpleCNN (direct sum prediction using LeNet-style model) | MultiHeadResNet (per-digit prediction using 4 classification heads on ResNet backbone) |
-| Accuracy | 53.00%                                                    | 94.80%                                                                                 |
-| MAE      | 0.672                                                     | 0.193                                                                                  |
-| Params   | 2.5M                                                      | 1.2M                                                                                   |
+| Accuracy | 53.00%                                                    | **94.80%**                                                                             |
+| MAE      | 0.672                                                     | **0.193**                                                                              |
+| Params   | 2.5M                                                      | **1.2M**                                                                               |
 
 ## Baseline
 
@@ -177,7 +177,7 @@ Using digital image processing, we apply the following pipeline to each image:
 
 ![Contour Detection](./static/main/contour_detection.png)
 
-**Step 2: Preprocessing** - For each detected digit:
+**Step 2: Preprocessing** (to somewhat better mimic MNIST data) - For each detected digit:
 
 - Erode with kernel size 2 (thin the strokes to match MNIST style)
 - Add padding of 4 pixels (center the digit)
