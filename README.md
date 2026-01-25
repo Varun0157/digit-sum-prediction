@@ -363,6 +363,7 @@ Note that the checkpoints can be found [here](https://drive.google.com/drive/fol
 - [ ] consider some interpretability visuals - visualise feature map from backbone
 - [ ] attempt better augmentation - only one attempt was made and it performed very well
 - [ ] generate more data (perhaps using diffusion and conditioning on the digits?)
+- [ ] since digit 1 has such a high accuracy, and the position of the second depends on the first (and so on), perhaps we can try using a sequential model as our final head.
 
 # TODO
 
