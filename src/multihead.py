@@ -6,11 +6,11 @@ import wandb
 
 from src.data import get_dataloader
 from src.loops import test_model
-from src.model import MultiHeadResNet
+from src.model import MultiHeadResNet, MultiHeadSpatialAttention
 from src.train import run_model
 
 
-def get_default_config() -> dict:
+def get_default_config(spatial: bool = False) -> dict:
     return {
         "batch_size": 128,
         "num_epochs": 100,
@@ -19,16 +19,19 @@ def get_default_config() -> dict:
         "kernel_size": 7,
         "width_multiplier": 1.0,
         "sum_loss_weight": 0.0,
-        "model": "MultiHeadResNet",
+        "model": "MultiHeadSpatialAttention" if spatial else "MultiHeadResNet",
     }
 
 
-def get_name(config: dict, suffix: str = "") -> str:
-    name = f"MultiHeadResNet_k{config['kernel_size']}"
-    if config["width_multiplier"] != 1.0:
-        name += f"_w{config['width_multiplier']:.2f}".replace(".", "")
-    if config["sum_loss_weight"] > 0:
-        name += f"_sum{config['sum_loss_weight']:.1f}".replace(".", "")
+def get_name(config: dict, spatial: bool = False, suffix: str = "") -> str:
+    if spatial:
+        name = "SpatialAttention"
+    else:
+        name = f"MultiHeadResNet_k{config['kernel_size']}"
+        if config["width_multiplier"] != 1.0:
+            name += f"_w{config['width_multiplier']:.2f}".replace(".", "")
+        if config["sum_loss_weight"] > 0:
+            name += f"_sum{config['sum_loss_weight']:.1f}".replace(".", "")
     if suffix:
         name += f"_{suffix}"
     return name
@@ -41,15 +44,16 @@ def train(
     sum_loss_weight: float = 0.0,
     dropout: float = 0.3,
     patience: int = 10,
+    spatial: bool = False,
     suffix: str = "",
 ) -> None:
-    config = get_default_config()
+    config = get_default_config(spatial)
     config["kernel_size"] = kernel_size
     config["width_multiplier"] = width_multiplier
     config["sum_loss_weight"] = sum_loss_weight
     config["dropout"] = dropout
 
-    train_loader, train_weights = get_dataloader(
+    train_loader, _ = get_dataloader(
         os.path.join(data_dir, "train"),
         batch_size=config["batch_size"],
         shuffle=True,
@@ -60,13 +64,16 @@ def train(
         shuffle=False,
     )
 
-    model = MultiHeadResNet(
-        kernel_size=kernel_size,
-        width_multiplier=width_multiplier,
-        sum_loss_weight=sum_loss_weight,
-        dropout=dropout,
-    )
-    model_name = get_name(config, suffix)
+    if spatial:
+        model = MultiHeadSpatialAttention(dropout=dropout)
+    else:
+        model = MultiHeadResNet(
+            kernel_size=kernel_size,
+            width_multiplier=width_multiplier,
+            sum_loss_weight=sum_loss_weight,
+            dropout=dropout,
+        )
+    model_name = get_name(config, spatial, suffix)
 
     run_model(model, model_name, config, train_loader, val_loader, patience=patience)
 
@@ -78,10 +85,11 @@ def eval(
     width_multiplier: float = 1.0,
     sum_loss_weight: float = 0.0,
     dropout: float = 0.3,
+    spatial: bool = False,
     suffix: str = "",
     ckpt_dir: str = "checkpoints",
 ) -> None:
-    config = get_default_config()
+    config = get_default_config(spatial)
     config["kernel_size"] = kernel_size
     config["width_multiplier"] = width_multiplier
     config["sum_loss_weight"] = sum_loss_weight
@@ -93,13 +101,16 @@ def eval(
         shuffle=False,
     )
 
-    model = MultiHeadResNet(
-        kernel_size=kernel_size,
-        width_multiplier=width_multiplier,
-        sum_loss_weight=sum_loss_weight,
-        dropout=dropout,
-    )
-    model_name = get_name(config, suffix)
+    if spatial:
+        model = MultiHeadSpatialAttention(dropout=dropout)
+    else:
+        model = MultiHeadResNet(
+            kernel_size=kernel_size,
+            width_multiplier=width_multiplier,
+            sum_loss_weight=sum_loss_weight,
+            dropout=dropout,
+        )
+    model_name = get_name(config, spatial, suffix)
     ckpt_path = os.path.join(ckpt_dir, model_name + ".pth")
 
     if not os.path.exists(ckpt_path):
@@ -145,6 +156,7 @@ if __name__ == "__main__":
     parser.add_argument("--sum_loss_weight", type=float, default=0.0)
     parser.add_argument("--dropout", type=float, default=0.3)
     parser.add_argument("--patience", type=int, default=10)
+    parser.add_argument("--spatial", action="store_true", help="Use spatial attention model")
     parser.add_argument("--suffix", type=str, default="")
     args = parser.parse_args()
 
@@ -157,6 +169,7 @@ if __name__ == "__main__":
                 sum_loss_weight=args.sum_loss_weight,
                 dropout=args.dropout,
                 patience=args.patience,
+                spatial=args.spatial,
                 suffix=args.suffix,
             )
         case "eval":
@@ -167,5 +180,6 @@ if __name__ == "__main__":
                 width_multiplier=args.width_multiplier,
                 sum_loss_weight=args.sum_loss_weight,
                 dropout=args.dropout,
+                spatial=args.spatial,
                 suffix=args.suffix,
             )
