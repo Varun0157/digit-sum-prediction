@@ -2,16 +2,12 @@
 
 ![Sample images](./static/baseline/sample_images.png)
 
-The samples are the images themselves and the **only label available is the total sum.**
+The samples are the images themselves and the **only label available is the total sum.** Some exploratory data analysis can be found [here](./data/analysis/).
 
-Some exploratory data analysis can be found [here](./data/analysis/).
-
-# Summary
-
-The final results on the test set are as below:
+The final results _on the test set_ are as below:
 | | Baseline | Main |
 | -------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Model | SimpleCNN (direct sum prediction using LeNet-style model) | MultiHeadResNet (per-digit prediction using 4 classification heads on ResNet backbone) |
+| Model | `SimpleCNN` (direct sum prediction using LeNet-style model) | `MultiHeadResNet` (per-digit prediction using 4 classification heads on ResNet backbone) |
 | Accuracy | 53.00% | **94.80%** |
 | MAE | 0.672 | **0.193** |
 | Params | 2.5M | **1.2M** |
