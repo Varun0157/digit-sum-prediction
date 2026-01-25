@@ -1,0 +1,6 @@
+{
+  "sum_accuracy": 0.905,
+  "mae": 0.41333333333333333,
+  "split": "test",
+  "checkpoint": "checkpoints/spatial_attention_best.pth"
+}

@@ -4,6 +4,8 @@
 
 ![Sample images](./static/baseline/sample_images.png)
 
+The samples are the images themselves and the only label available is the total sum.
+
 Some exploratory data analysis can be found [here](./data/analysis/).
 
 ## Baseline
@@ -140,9 +142,11 @@ Based on the experiences from the Baseline model, which saw better performance f
 
 However, the results were disappointing, with us barely breaking more than 1% over baseline performance.
 
-> > > some results from this model
+This model can be explored in `./src/multibranch.py`.
 
 ### Hypothesis 2: Digit Prediction is Easier than Sum Prediction
+
+**Assumption**: We have exactly 4 digits in each image.
 
 Prediction of each digit is fundamentally a much simpler task than prediction of the final sum. But, the labels we've been provided only contain the final sum and not the individual digits.
 
@@ -181,9 +185,12 @@ Using digital image processing, we apply the following pipeline to each image:
 
 **Manual Labelling + Fine-tuning:**
 
-The pre-trained MNIST model struggled with our handwriting style. To improve it:
+In order to help the convnet pre-trained on MNIST, we did the following:
 
 1. Manually labelled 500 failure cases using a custom GUI tool
+
+   ![Manual Labelling GUI](./static/main/labeller.png)
+
 2. Fine-tuned the MNIST classifier on ~51K digit crops (manual labels + pseudo-labels from successes)
 3. Re-classified the failure cases with the fine-tuned model → recovered ~3,400 additional samples
 
@@ -212,7 +219,7 @@ At this stage, we build our multi-head model and apply iterative self-labelling:
 
 After 7 rounds, ~250 samples remained unlabelled. We manually labelled most of these using a custom GUI tool. The final 14 samples were too ambiguous even for human labelling and were kept as unlabelled test samples.
 
-**Final Dataset:** 29,986 labelled samples (99.95% coverage) with per-digit labels.
+**Final Dataset:** 29,986 labelled samples (99.95% coverage) with per-digit labels. The final split dataset can be found [here](https://drive.google.com/drive/folders/1Gkdej0sLzbHOqgkk02SyBBwv7mdHybCs?usp=sharing).
 
 #### Modelling
 
@@ -220,7 +227,21 @@ Since it is usually adept at feature extraction, we use a ResNet based backbone 
 
 Immediately, we see a significant boost in performance. With just about a million parameters (half of the best baseline model) we get a test accuracy of about 92.63%.
 
+##### Usage
+
+```bash
+# Train
+uv run python -m src.train_multihead --data_dir data/multi --epochs 100 --lr 1e-3 --batch_size 128 --dropout 0.3 --augment
+
+# Test
+uv run python -m src.test_multihead --checkpoint checkpoints/multihead_resnet_best.pth --data_dir data/multi/test
+```
+
 ##### Experiments
+
+| Train Loss                                       | Validation Loss                              | Validation Accuracy                            |
+| ------------------------------------------------ | -------------------------------------------- | ---------------------------------------------- |
+| ![Train Loss](./static/main/train-loss-main.png) | ![Val Loss](./static/main/val-loss-main.png) | ![Val Acc](./static/main/val-sum-acc-main.png) |
 
 ###### Deeper and Wider
 
@@ -305,11 +326,35 @@ Digit 3 (third position) is consistently the hardest to classify across all conf
 
 ![Per-Digit Position Accuracy](./static/main/per_digit_accuracy.png)
 
+##### Final Model
+
+Based on ablation results, we selected the augmented configuration and trained on 90% of all labelled data (26,987 samples) with 10% held out for validation (2,999 samples).
+
+| Metric       | Value  |
+| ------------ | ------ |
+| Val Accuracy | 95.43% |
+| Val MAE      | 0.24   |
+| Parameters   | 1.22M  |
+
+Note that the checkpoints can be found [here](https://drive.google.com/drive/folders/1NKSWVLkwbzxLCrP4y0pgiZPq4Vu7hOht?usp=sharing).
+
+##### Future Scope
+
+- [ ] consider some interpretability visuals - visualise feature map from backbone
+- [ ] attempt better augmentation - only one attempt was made and it performed very well
+- [ ] generate more data (perhaps using diffusion and conditioning on the digits?)
+
 # TODO
 
-- [ ] push to gh classroom
-- [ ] train on all labelled data
-- [ ] train on multi branch
-- [ ] put screen-shot of GUI tool
+- [x] push to gh classroom
+- [x] put screen-shot of GUI tool
+- [x] train on all labelled data
+- [x] update inference.py script
 - [ ] clean up and un-gpt
+  - [ ] move all models to models/
+  - [ ] make loops completely generic instead of separate train and test scripts for each new variant
 - [ ] remove test OCR models from uv
+
+# NOTE
+
+LLMs (mostly Claude Sonnet 4.5) were used extensively for the `main` section of the experiment in particular for quick scripting with the tight deadline. This led to a decrease in the general quality of the code during this section. This should be resolved before the code is made public.

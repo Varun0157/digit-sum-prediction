@@ -1,0 +1,8 @@
+{
+  "checkpoint": "checkpoints/multihead_resnet_best_sum10.pth",
+  "split": "test",
+  "num_samples": 3000,
+  "sum_accuracy": 0.9233333333333333,
+  "mae": 0.31066666666666665,
+  "parameters": 1218824
+}
