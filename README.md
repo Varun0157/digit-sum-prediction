@@ -1,5 +1,3 @@
-# Digit Sum Prediction
-
 **Goal**: predict the sum of handwritten digits.
 
 ![Sample images](./static/baseline/sample_images.png)
@@ -8,18 +6,31 @@ The samples are the images themselves and the **only label available is the tota
 
 Some exploratory data analysis can be found [here](./data/analysis/).
 
-## Summary
+# Summary
 
-|          | Baseline                                                  | Main                                                                                   |
+The final results on the test set are as below:
+| | Baseline | Main |
 | -------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Model    | SimpleCNN (direct sum prediction using LeNet-style model) | MultiHeadResNet (per-digit prediction using 4 classification heads on ResNet backbone) |
-| Accuracy | 53.00%                                                    | **94.80%**                                                                             |
-| MAE      | 0.672                                                     | **0.193**                                                                              |
-| Params   | 2.5M                                                      | **1.2M**                                                                               |
+| Model | SimpleCNN (direct sum prediction using LeNet-style model) | MultiHeadResNet (per-digit prediction using 4 classification heads on ResNet backbone) |
+| Accuracy | 53.00% | **94.80%** |
+| MAE | 0.672 | **0.193** |
+| Params | 2.5M | **1.2M** |
 
-## Baseline
+## Table of Contents
 
-### Results
+- [Baseline](#baseline)
+  - [Results](#results)
+  - [Key Findings from Ablation Studies](#key-findings-from-ablation-studies)
+  - [Usage](#usage)
+- [Main Model](#main-model)
+  - [Hypothesis 1: Multi-Scale Feature Extraction](#hypothesis-1-the-advantages-of-multi-scale-feature-extraction)
+  - [Hypothesis 2: Digit Prediction](#hypothesis-2-digit-prediction-is-easier-than-sum-prediction)
+    - [Data Extraction](#data-extraction)
+    - [Modelling](#modelling)
+
+# Baseline
+
+## Results
 
 Performance of different model configurations on the validation set:
 
@@ -40,26 +51,26 @@ Performance of different model configurations on the validation set:
 
 **Best Model:** SimpleCNN with kernel size 7, average pooling, and unweighted loss achieves **59.77% accuracy** with **0.49 MAE**.
 
-#### Confusion Matrix (Best Model)
+### Confusion Matrix (Best Model)
 
 ![Best Model Confusion Matrix](static/baseline/best_model_confusion_matrix.png)
 
-#### Training Plots
+### Training Plots
 
 The plots for all training runs are available on request, with the sample for all average pooling runs shown below:
 | Train Loss | Validation Loss | Validation Accuracy |
 | ----- | ----- | ----- |
 | ![Train Loss](./static/baseline/wandb-plots/baseline-train-loss.png) | ![Val Loss](./static/baseline/wandb-plots/baseline-val-loss.png) | ![Val Acc](./static/baseline/wandb-plots/baseline-val-acc.png) |
 
-### Key Findings from Ablation Studies
+## Key Findings from Ablation Studies
 
-#### Pooling Type
+### Pooling Type
 
 ![Pooling Type Comparison](static/baseline/pooling_comparison.png)
 
 Average pooling consistently outperforms max pooling across metrics. This could be because of the spatial invariance it helps bring about.
 
-#### Kernel Size
+### Kernel Size
 
 ![Kernel Size Comparison](static/baseline/kernel_comparison.png)
 
@@ -70,7 +81,7 @@ For max pooling, the performance caps at a kernel size of 5 and degrades as we m
 ![Per Class Kernel Comparison](./static/baseline/perclass_kernel_comparison.png)
 Somehow, for rarer sums, we see that a kernel size of 5 occasionally out-performs a kernel size of 7.
 
-#### Class Weighting
+### Class Weighting
 
 ![Class Distribution](static/baseline/class_distribution.png)
 
@@ -87,13 +98,13 @@ The "balanced" model still seems to bring about some advantages, though. The rar
 - we should favour average pooling over max pooling
 - A kernel size of 7 seems to bring about the best overall performance, but larger kernel sizes may do even better. Also, a kernel size of 5 seems to do better on rare classes. Thus, a multi-branch CNN should be strongly considered for the final model.
 
-### Usage
+## Usage
 
 ```bash
 uv sync
 ```
 
-#### Data Preprocessing
+### Data Preprocessing
 
 Split raw data into train/val sets with stratification:
 
@@ -107,7 +118,7 @@ Analyze the processed data (generates visualizations and quality reports):
 uv run -m src.pre.analyse --data_dir data/processed --output_dir data/analysis --seed 42
 ```
 
-#### Training
+### Training
 
 Train with default configuration:
 
@@ -127,7 +138,7 @@ Sanity check (train and validate on training set):
 uv run -m src.baseline --mode sanity --balance --pool avg
 ```
 
-#### Evaluation
+### Evaluation
 
 Evaluate a trained model:
 
@@ -143,9 +154,9 @@ bash eval_all.sh
 
 NOTE: the checkpoints can be found [here](https://drive.google.com/drive/folders/12NJp2T7JPVG_FaXHWO5_D8R8zth-16D6?usp=sharing)
 
-## Main Model
+# Main Model
 
-### Hypothesis 1: The Advantages of Multi-Scale Feature Extraction
+## Hypothesis 1: The Advantages of Multi-Scale Feature Extraction
 
 Based on the experiences from the Baseline model, which saw better performance for Kernel Size 7, but also better performance of kernel size 5 on rare classes, we decided to build a multi-branch CNN that extracts features at multiple scales to combine the advantages of each kernel size.
 
@@ -153,7 +164,7 @@ However, the results were disappointing, with us barely breaking more than 1% ov
 
 This model can be explored in `./src/multibranch.py`.
 
-### Hypothesis 2: Digit Prediction is Easier than Sum Prediction
+## Hypothesis 2: Digit Prediction is Easier than Sum Prediction
 
 **Assumption**: We have exactly 4 digits in each image.
 
@@ -161,15 +172,15 @@ Prediction of each digit is fundamentally a much simpler task than prediction of
 
 Thus, we aim to extract digit level labels from our samples.
 
-#### Data Extraction
+### Data Extraction
 
-##### Attempt 1: OCR
+#### Attempt 1: OCR
 
 Using both `tesseractt` and `easyocr` led to underwhelming results. On extracting digits (with and without colour inversion), we could never break about 50% success, where a successful extraction is one where the sum of predicted digits equals the ground truth sum.
 
 Thus, we had to be more creative.
 
-##### Attempt 2: Pre-trained MNIST + self-labelling
+#### Attempt 2: Pre-trained MNIST + self-labelling
 
 Using digital image processing, we apply the following pipeline to each image:
 
@@ -230,13 +241,13 @@ After 7 rounds, ~250 samples remained unlabelled. We manually labelled most of t
 
 **Final Dataset:** 29,986 labelled samples (99.95% coverage) with per-digit labels. The final split dataset can be found [here](https://drive.google.com/drive/folders/1Gkdej0sLzbHOqgkk02SyBBwv7mdHybCs?usp=sharing).
 
-#### Modelling
+### Modelling
 
 Since it is usually adept at feature extraction, we use a ResNet based backbone with some simple dense classification heads.
 
 Immediately, we see a significant boost in performance. With just about a million parameters (half of the best baseline model) we get a test accuracy of about 92.63%.
 
-##### Usage
+#### Usage
 
 ```bash
 # Train
@@ -246,13 +257,13 @@ uv run python -m src.train_multihead --data_dir data/multi --epochs 100 --lr 1e-
 uv run python -m src.test_multihead --checkpoint checkpoints/multihead_resnet_best.pth --data_dir data/multi/test
 ```
 
-##### Experiments
+#### Experiments
 
 | Train Loss                                       | Validation Loss                              | Validation Accuracy                            |
 | ------------------------------------------------ | -------------------------------------------- | ---------------------------------------------- |
 | ![Train Loss](./static/main/train-loss-main.png) | ![Val Loss](./static/main/val-loss-main.png) | ![Val Acc](./static/main/val-sum-acc-main.png) |
 
-###### Deeper and Wider
+##### Deeper and Wider
 
 We add a "width multiplier" that essentially:
 
@@ -264,7 +275,7 @@ We add a "width multiplier" that essentially:
 
 However, we see that this does not aid performance much, suggesting that our initial model is "good enough" for the task at hand.
 
-###### Initial Kernel Sizes
+##### Initial Kernel Sizes
 
 On altering the initial kernel size of the ResNet backbone, we notice:
 
@@ -272,7 +283,7 @@ On altering the initial kernel size of the ResNet backbone, we notice:
 
 The small kernel sizes severely under-perform. The kernel size of 5 does slightly better on the val set than that of 7, but slightly under-performs on the test set. Since the performance does not scale much with size, we end our experiments here. This is likely because the image samples are such that larger scale features are more important.
 
-###### Regularising Using Total Sum
+##### Regularising Using Total Sum
 
 We hypothesized that adding an auxiliary loss term for the total sum might help the model learn more coherent digit predictions. The sum loss computes a differentiable expected value for each digit (E[digit] = Σ(softmax_prob_i × i)) and applies MSE against the ground truth sum. This encourages digit predictions that are collectively consistent with the known total.
 
@@ -282,7 +293,7 @@ However, as shown above, adding sum regularization (weights 0.5 and 1.0) did not
 
 Interestingly, there was an improvement in MAE - likely because the model is somewhat encouraged to optimise for the sum as well.
 
-###### Spatial Attention
+##### Spatial Attention
 
 We explored whether learned spatial attention could outperform global average pooling. The hypothesis was that different digit positions might benefit from focusing on different spatial regions of the feature maps. We implemented per-head spatial attention that learns to weight spatial locations before classification.
 
@@ -290,7 +301,7 @@ We explored whether learned spatial attention could outperform global average po
 
 Surprisingly, spatial attention underperformed the baseline by ~2%. Global average pooling's uniform weighting appears to be a better inductive bias for this task, possibly because digits are not uniformly separated and each head needs to attend to the entire feature.
 
-###### Augmentation
+##### Augmentation
 
 We applied standard data augmentation techniques to improve generalization:
 
@@ -301,7 +312,7 @@ We applied standard data augmentation techniques to improve generalization:
 
 ![Augmentation Comparison](./static/main/augmentation_comparison.png)
 
-###### Summary
+##### Summary
 
 | Config        | Val Sum Acc | Test Sum Acc | Val MAE  | Test MAE | Val Digit Acc | Params |
 | ------------- | ----------- | ------------ | -------- | -------- | ------------- | ------ |
@@ -315,7 +326,7 @@ We applied standard data augmentation techniques to improve generalization:
 | k3            | 91.67%      | 91.97%       | 0.39     | 0.35     | 96.50%        | 1.22M  |
 | spatial       | 90.87%      | 90.50%       | 0.40     | 0.41     | 96.26%        | 1.22M  |
 
-###### Detailed Analysis
+##### Detailed Analysis
 
 **Test Set Class Distribution**
 
@@ -335,7 +346,7 @@ Digit 3 (third position) is consistently the hardest to classify across all conf
 
 ![Per-Digit Position Accuracy](./static/main/per_digit_accuracy.png)
 
-##### Final Model
+#### Final Model
 
 Based on ablation results, we selected the augmented configuration and trained on 90% of all labelled data (26,987 samples) with 10% held out for validation (2,999 samples).
 
@@ -347,7 +358,7 @@ Based on ablation results, we selected the augmented configuration and trained o
 
 Note that the checkpoints can be found [here](https://drive.google.com/drive/folders/1NKSWVLkwbzxLCrP4y0pgiZPq4Vu7hOht?usp=sharing).
 
-##### Future Scope
+#### Future Scope
 
 - [ ] consider some interpretability visuals - visualise feature map from backbone
 - [ ] attempt better augmentation - only one attempt was made and it performed very well
@@ -363,7 +374,8 @@ Note that the checkpoints can be found [here](https://drive.google.com/drive/fol
   - [x] move all models to models/
   - [x] make loops completely generic instead of separate train and test scripts for each new variant
 - [x] remove test OCR models from uv
+- [ ] add links to all data
 
 # NOTE
 
-LLMs (mostly Claude Sonnet 4.5) were used extensively for the `main` section of the experiment in particular for quick scripting with the tight deadline. This led to a decrease in the general quality of the code during this section. This should be resolved before the code is made public.
+LLMs (mostly Claude Sonnet 4.5) were used extensively for the `main` section of the experiment in particular for quick scripting with the tight deadline. This led to a decrease in the general quality of the code during this section.
