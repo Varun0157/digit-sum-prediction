@@ -4,38 +4,30 @@ import numpy as np
 import torch
 from glob import glob
 
+from src.model.base import BaseModel
 from src.model.multihead import MultiHeadResNet
 from src.model.baseline import SimpleCNN
 
 
-def get_multihead(device, checkpoint="checkpoints/multihead_resnet_best_aug_full.pth"):
-    def load():
-        model = MultiHeadResNet(
-            num_digits=4, width_multiplier=1.0, kernel_size=7, dropout=0.3
-        )
-        model.load_state_dict(torch.load(checkpoint, map_location=device))
-        return model.to(device).eval()
-
-    def extract(logits):
-        digit_preds = [l.argmax(dim=1) for l in logits]
-        return torch.stack(digit_preds, dim=1).sum(dim=1)
-
-    return load, extract
+def load_multihead(
+    device: torch.device,
+    checkpoint: str = "checkpoints/multihead_resnet_best_aug_full.pth",
+) -> MultiHeadResNet:
+    model = MultiHeadResNet(num_digits=4, width_multiplier=1.0, kernel_size=7, dropout=0.3)
+    model.load_state_dict(torch.load(checkpoint, map_location=device))
+    return model.to(device).eval()
 
 
-def get_baseline(device, checkpoint="checkpoints/SimpleCNN_k7_avg_unweighted.pth"):
-    def load():
-        model = SimpleCNN(num_classes=37, kernel_size=7, pool_type="avg")
-        model.load_state_dict(torch.load(checkpoint, map_location=device))
-        return model.to(device).eval()
-
-    def extract(logits):
-        return logits.argmax(dim=1)
-
-    return load, extract
+def load_baseline(
+    device: torch.device,
+    checkpoint: str = "checkpoints/SimpleCNN_k7_avg_unweighted.pth",
+) -> SimpleCNN:
+    model = SimpleCNN(num_classes=37, kernel_size=7, pool_type="avg")
+    model.load_state_dict(torch.load(checkpoint, map_location=device))
+    return model.to(device).eval()
 
 
-def predict(model, x, extract_fn, device):
+def predict(model: BaseModel, x: np.ndarray | torch.Tensor, device: torch.device) -> np.ndarray:
     if isinstance(x, np.ndarray):
         x = torch.from_numpy(x).float()
     if x.ndim == 3:
@@ -47,12 +39,12 @@ def predict(model, x, extract_fn, device):
 
     with torch.no_grad():
         logits = model(x)
-        preds = extract_fn(logits)
+        preds = model.get_sum(logits)
 
     return preds.cpu().numpy()
 
 
-def evaluate(data_dir="data/test", batch_size=128):
+def evaluate(data_dir: str = "data/test", batch_size: int = 128) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     data_files = sorted(glob(f"{data_dir}/data*.npy"))
@@ -63,18 +55,16 @@ def evaluate(data_dir="data/test", batch_size=128):
 
     print(f"Loaded {len(samples)} samples from {data_dir}\n")
 
-    configs = [
-        ("Multihead ResNet", get_multihead(device)),
-        ("Baseline SimpleCNN", get_baseline(device)),
+    models: list[tuple[str, BaseModel]] = [
+        ("Multihead ResNet", load_multihead(device)),
+        ("Baseline SimpleCNN", load_baseline(device)),
     ]
 
-    for name, (load_fn, extract_fn) in configs:
-        model = load_fn()
-
+    for name, model in models:
         preds = []
         for i in range(0, len(samples), batch_size):
             batch = samples[i : i + batch_size]
-            preds.append(predict(model, batch, extract_fn, device))
+            preds.append(predict(model, batch, device))
         preds = np.concatenate(preds)
 
         acc = (preds == labels).mean() * 100
