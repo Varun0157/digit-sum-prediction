@@ -239,7 +239,7 @@ At this stage, we build our multi-head model and apply iterative self-labelling:
 
 After 7 rounds, ~250 samples remained unlabelled. We manually labelled most of these using a custom GUI tool. The final 14 samples were too ambiguous even for human labelling and were kept as unlabelled test samples.
 
-**Final Dataset:** 29,986 labelled samples (99.95% coverage) with per-digit labels. The final split dataset can be found [here](https://drive.google.com/drive/folders/1Gkdej0sLzbHOqgkk02SyBBwv7mdHybCs?usp=sharing).
+**Final Dataset:** 29,986 labelled samples (99.95% coverage) with per-digit labels.
 
 ### Modelling
 
@@ -377,5 +377,7 @@ Note that the checkpoints can be found [here](https://drive.google.com/drive/fol
 - [ ] add links to all data
 
 # NOTE
+
+The required data can be found [here](https://drive.google.com/drive/folders/17Mmg17G9DLVYr33BWFyccp7od5hMP7sT?usp=sharing), including the initial raw data, the labelled data, and the final test data.
 
 LLMs (mostly Claude Sonnet 4.5) were used extensively for the `main` section of the experiment in particular for quick scripting with the tight deadline. This led to a decrease in the general quality of the code during this section.
