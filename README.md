@@ -359,7 +359,16 @@ Note that the checkpoints can be found [here](https://drive.google.com/drive/fol
 - [ ] consider some interpretability visuals - visualise feature map from backbone
 - [ ] attempt better augmentation - only one attempt was made and it performed very well
 - [ ] generate more data (perhaps using diffusion and conditioning on the digits?)
-- [ ] since digit 1 has such a high accuracy, and the position of the second depends on the first (and so on), perhaps we can try using a sequential model as our final head.
+- [x] since digit 1 has such a high accuracy, and the position of the second depends on the first (and so on), perhaps we can try using a sequential model as our final head.
+
+  Implemented as `GRUHead`: a shared ResNet backbone whose pooled feature vector initializes a GRU hidden state, with a learned step embedding fed at each of 4 steps and 4 separate linear heads (one per digit position). Trained with the same augmentation as `MultiHeadResNet`.
+
+  | Model                 | Test Accuracy | Test MAE |
+  | --------------------- | ------------- | -------- |
+  | MultiHeadResNet (aug) | 95.20%        | 0.168    |
+  | GRUHead (aug)         | 94.40%        | 0.200    |
+
+  The shared backbone likely already captures sufficient inter-digit context.
 
 # TODO
 
