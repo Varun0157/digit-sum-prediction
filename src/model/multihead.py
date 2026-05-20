@@ -1,15 +1,5 @@
 """
 Multi-head ResNet-inspired models for digit-wise prediction.
-
-All variants share a ResNetBackbone encoder and a MultiDigitBase interface.
-
-Variants:
-- MultiHeadResNet: 4 independent linear heads on pooled features (~1.2M params)
-- MultiHeadSpatialAttention: per-head learned spatial attention instead of avg pool
-- GRUHead: GRU decoder over 4 steps, initialized from pooled backbone features
-
-Input: Nx1x40x168
-Output: Nx4x10 (logits for each digit position)
 """
 
 from abc import abstractmethod
@@ -69,7 +59,7 @@ class ResNetBackbone(nn.Module):
     """
     Shared ResNet-inspired feature extractor.
 
-    Returns feature maps (N, out_channels, H, W) — pooling is left to the head.
+    Returns feature maps (N, out_channels, H, W)
     """
 
     def __init__(self, kernel_size: int = 7, width_multiplier: float = 1.0):
@@ -102,9 +92,6 @@ class ResNetBackbone(nn.Module):
 class MultiDigitBase(BaseModel):
     """
     Abstract base for multi-digit models.
-
-    Provides default apply_criterion (per-digit cross entropy) and get_sum.
-    Subclasses must implement forward(); they may override apply_criterion if needed.
     """
 
     num_digits: int
@@ -239,10 +226,6 @@ class MultiHeadSpatialAttention(MultiDigitBase):
 class GRUHead(MultiDigitBase):
     """
     GRU-based sequential digit prediction.
-
-    The backbone feature vector initializes the GRU hidden state. A learned
-    step embedding is fed as input at each of the 4 steps, and each step's
-    hidden state is classified into a digit (0-9) by a single shared head.
     """
 
     def __init__(self, num_digits: int = 4, dropout: float = 0.3):
