@@ -5,15 +5,24 @@ import torch
 from glob import glob
 
 from src.model.base import BaseModel
-from src.model.multihead import MultiHeadResNet
 from src.model.baseline import SimpleCNN
+from src.model.multihead import GRUHead, MultiHeadResNet
 
 
 def load_multihead(
     device: torch.device,
-    checkpoint: str = "checkpoints/multihead_resnet_best_aug_full.pth",
+    checkpoint: str = "checkpoints/MultiHeadResNet_k7_aug.pth",
 ) -> MultiHeadResNet:
     model = MultiHeadResNet(num_digits=4, width_multiplier=1.0, kernel_size=7, dropout=0.3)
+    model.load_state_dict(torch.load(checkpoint, map_location=device))
+    return model.to(device).eval()
+
+
+def load_gru(
+    device: torch.device,
+    checkpoint: str = "checkpoints/GRUHead_aug.pth",
+) -> GRUHead:
+    model = GRUHead(num_digits=4, dropout=0.3)
     model.load_state_dict(torch.load(checkpoint, map_location=device))
     return model.to(device).eval()
 
@@ -57,6 +66,7 @@ def evaluate(data_dir: str = "data/test", batch_size: int = 128) -> None:
 
     models: list[tuple[str, BaseModel]] = [
         ("Multihead ResNet", load_multihead(device)),
+        ("GRU Head", load_gru(device)),
         ("Baseline SimpleCNN", load_baseline(device)),
     ]
 

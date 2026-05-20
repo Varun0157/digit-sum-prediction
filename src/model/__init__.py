@@ -1,7 +1,7 @@
 from .base import BaseModel, Labels
 from .baseline import SimpleCNN, SimpleMNIST
 from .multibranch import MultiBranchCNN
-from .multihead import MultiHeadResNet, MultiHeadSpatialAttention
+from .multihead import GRUHead, MultiHeadResNet, MultiHeadSpatialAttention
 
 __all__ = [
     "BaseModel",
@@ -11,4 +11,5 @@ __all__ = [
     "MultiBranchCNN",
     "MultiHeadResNet",
     "MultiHeadSpatialAttention",
+    "GRUHead",
 ]
