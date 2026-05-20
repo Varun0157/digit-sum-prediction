@@ -12,11 +12,13 @@ from src.train import run_model
 
 
 def build_augmentation() -> T.Compose:
-    return T.Compose([
-        T.RandomRotation(degrees=5, fill=0),
-        T.RandomAffine(degrees=0, translate=(0.05, 0.05), fill=0),
-        T.RandomErasing(p=0.1, scale=(0.02, 0.1), ratio=(0.3, 3.3), value=0),
-    ])
+    return T.Compose(
+        [
+            T.RandomRotation(degrees=5, fill=0),
+            T.RandomAffine(degrees=0, translate=(0.05, 0.05), fill=0),
+            T.RandomErasing(p=0.1, scale=(0.02, 0.1), ratio=(0.3, 3.3), value=0),
+        ]
+    )
 
 
 def get_default_config(model_name: str = "MultiHeadResNet") -> dict:
@@ -32,7 +34,13 @@ def get_default_config(model_name: str = "MultiHeadResNet") -> dict:
     }
 
 
-def get_name(config: dict, spatial: bool = False, gru: bool = False, augment: bool = False, suffix: str = "") -> str:
+def get_name(
+    config: dict,
+    spatial: bool = False,
+    gru: bool = False,
+    augment: bool = False,
+    suffix: str = "",
+) -> str:
     if gru:
         name = "GRUHead"
     elif spatial:
@@ -85,21 +93,41 @@ def train(
     augment: bool = False,
     suffix: str = "",
 ) -> None:
-    model = _build_model(spatial, gru, kernel_size, width_multiplier, sum_loss_weight, dropout)
+    model = _build_model(
+        spatial, gru, kernel_size, width_multiplier, sum_loss_weight, dropout
+    )
     config = get_default_config(type(model).__name__)
-    config.update({"kernel_size": kernel_size, "width_multiplier": width_multiplier,
-                   "sum_loss_weight": sum_loss_weight, "dropout": dropout, "augment": augment})
+    config.update(
+        {
+            "kernel_size": kernel_size,
+            "width_multiplier": width_multiplier,
+            "sum_loss_weight": sum_loss_weight,
+            "dropout": dropout,
+            "augment": augment,
+        }
+    )
 
     transform = build_augmentation() if augment else None
     train_loader, _ = get_dataloader(
-        os.path.join(data_dir, "train"), batch_size=config["batch_size"], shuffle=True,
+        os.path.join(data_dir, "train"),
+        batch_size=config["batch_size"],
+        shuffle=True,
         transform=transform,
     )
     val_loader, _ = get_dataloader(
-        os.path.join(data_dir, "val"), batch_size=config["batch_size"], shuffle=False,
+        os.path.join(data_dir, "val"),
+        batch_size=config["batch_size"],
+        shuffle=False,
     )
 
-    run_model(model, get_name(config, spatial, gru, augment, suffix), config, train_loader, val_loader, patience=patience)
+    run_model(
+        model,
+        get_name(config, spatial, gru, augment, suffix),
+        config,
+        train_loader,
+        val_loader,
+        patience=patience,
+    )
 
 
 def eval(
@@ -114,10 +142,18 @@ def eval(
     suffix: str = "",
     ckpt_dir: str = "checkpoints",
 ) -> None:
-    model = _build_model(spatial, gru, kernel_size, width_multiplier, sum_loss_weight, dropout)
+    model = _build_model(
+        spatial, gru, kernel_size, width_multiplier, sum_loss_weight, dropout
+    )
     config = get_default_config(type(model).__name__)
-    config.update({"kernel_size": kernel_size, "width_multiplier": width_multiplier,
-                   "sum_loss_weight": sum_loss_weight, "dropout": dropout})
+    config.update(
+        {
+            "kernel_size": kernel_size,
+            "width_multiplier": width_multiplier,
+            "sum_loss_weight": sum_loss_weight,
+            "dropout": dropout,
+        }
+    )
 
     model_name = get_name(config, spatial, gru, False, suffix)
     ckpt_path = os.path.join(ckpt_dir, model_name + ".pth")
@@ -133,7 +169,9 @@ def eval(
     print(f"Using device: {device}")
 
     loader, _ = get_dataloader(
-        os.path.join(data_dir, split), batch_size=config["batch_size"], shuffle=False,
+        os.path.join(data_dir, split),
+        batch_size=config["batch_size"],
+        shuffle=False,
     )
 
     run = wandb.init(
@@ -143,7 +181,12 @@ def eval(
         job_type="evaluation",
     )
 
-    test_model(model=model, test_dataloader=loader, device=device, model_name=f"{model_name}_{split}")
+    test_model(
+        model=model,
+        test_dataloader=loader,
+        device=device,
+        model_name=f"{model_name}_{split}",
+    )
     run.finish()
 
 
