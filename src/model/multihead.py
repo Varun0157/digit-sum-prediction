@@ -240,21 +240,23 @@ class GRUHead(MultiDigitBase):
 
         self.step_emb = nn.Embedding(num_digits, 32)
         self.gru = nn.GRU(input_size=32, hidden_size=c4, batch_first=False)
-        self.head = nn.Linear(c4, 10)
+        self.heads = nn.ModuleList([nn.Linear(c4, 10) for _ in range(num_digits)])
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         N = x.size(0)
 
-        x = self.backbone(x)  # (N, 256, 3, 11)
-        x = self.avgpool(x)  # (N, 256, 1, 1)
-        x = torch.flatten(x, 1)  # (N, 256)
-        x = self.dropout(x)  # (N, 256)
+        x = self.backbone(x)                                              # (N, 256, 3, 11)
+        x = self.avgpool(x)                                               # (N, 256, 1, 1)
+        x = torch.flatten(x, 1)                                           # (N, 256)
+        x = self.dropout(x)                                               # (N, 256)
 
-        h0 = x.unsqueeze(0)  # (1, N, 256)
+        h0 = x.unsqueeze(0)                                               # (1, N, 256)
 
         steps = torch.arange(self.num_digits, device=x.device)
-        embs = self.step_emb(steps).unsqueeze(1).expand(-1, N, -1)  # (4, N, 32)
+        embs = self.step_emb(steps).unsqueeze(1).expand(-1, N, -1)        # (4, N, 32)
 
-        out, _ = self.gru(embs, h0)  # (4, N, 256)
-        logits = self.head(out).permute(1, 0, 2)  # (N, 4, 10)
+        out, _ = self.gru(embs, h0)                                       # (4, N, 256)
+        logits = torch.stack(
+            [self.heads[i](out[i]) for i in range(self.num_digits)], dim=1
+        )                                                                  # (N, 4, 10)
         return logits
