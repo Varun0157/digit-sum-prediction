@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any, Callable, TypedDict
 
 import numpy as np
 import torch
@@ -25,8 +25,9 @@ class DigitSumDataset(Dataset[Batch]):
     - digit_labels.npy: (N, 4) per-digit labels (optional)
     """
 
-    def __init__(self, data_dir: str) -> None:
+    def __init__(self, data_dir: str, transform: Callable | None = None) -> None:
         self.data_dir = Path(data_dir)
+        self.transform = transform
 
         self.samples = np.load(self.data_dir / "samples.npy")
         self.sum_labels = np.load(self.data_dir / "sum_labels.npy")
@@ -45,6 +46,8 @@ class DigitSumDataset(Dataset[Batch]):
 
     def __getitem__(self, idx: int) -> Batch:
         image = torch.from_numpy(self.samples[idx]).unsqueeze(0).float() / 255.0
+        if self.transform is not None:
+            image = self.transform(image)
         labels: Labels = {"sum": torch.tensor(self.sum_labels[idx], dtype=torch.long)}
 
         if self.digit_labels is not None:
@@ -84,9 +87,10 @@ def get_dataloader(
     batch_size: int = 32,
     shuffle: bool = True,
     num_workers: int = 0,
+    transform: Callable | None = None,
     **kwargs: Any,
 ) -> tuple[DataLoader[Batch], torch.Tensor]:
-    dataset = DigitSumDataset(data_dir)
+    dataset = DigitSumDataset(data_dir, transform=transform)
     loader = DataLoader(
         dataset,
         batch_size=batch_size,
