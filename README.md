@@ -23,6 +23,8 @@ The final results _on the test set_ are as below:
   - [Hypothesis 2: Digit Prediction](#hypothesis-2-digit-prediction-is-easier-than-sum-prediction)
     - [Data Extraction](#data-extraction)
     - [Modelling](#modelling)
+- [Future Scope](#future-scope)
+- [TODO](#todo)
 
 # Baseline
 
